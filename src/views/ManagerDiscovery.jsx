@@ -1,24 +1,68 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Star, Check, ChevronRight } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { MOCK_ARTISTS } from '../data/mockData';
 import BackButton from '../components/layout/BackButton';
 
 const ManagerDiscovery = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
+
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-10 pb-12">
       <div className="flex items-center mb-4 sm:mb-6">
         <BackButton />
       </div>
+      
+      {/* Search Bar */}
       <div className="relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-600 rounded-2xl blur opacity-25"></div>
-        <div className="relative bg-[#0F0F13] p-2 sm:p-3 rounded-2xl flex items-center border border-white/10 shadow-2xl">
-          <Search className="ml-2 sm:ml-4 text-gray-400 flex-shrink-0" size={18} sm={24} />
-          <input
-            type="text"
-            placeholder="Find an artist for your next event..."
-            className="w-full bg-transparent border-none text-white text-sm sm:text-lg px-2 sm:px-4 py-3 sm:py-4 focus:ring-0 placeholder:text-gray-600 min-w-0"
-          />
+        <div className="relative bg-[#0F0F13] p-2 sm:p-3 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2 border border-white/10 shadow-2xl">
+          <div className="flex items-center flex-1">
+            <Search className="ml-2 sm:ml-4 text-gray-400 flex-shrink-0" size={18} sm={24} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search artists or managers..."
+              className="w-full bg-transparent border-none text-white text-sm sm:text-lg px-2 sm:px-4 py-3 sm:py-4 focus:outline-none focus:ring-0 placeholder:text-gray-600 min-w-0"
+            />
+          </div>
+          
+          {/* Search Type Filter */}
+          <div className="flex gap-1 sm:gap-2 p-1 bg-black/20 rounded-xl">
+            <button
+              onClick={() => setSearchType('all')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                searchType === 'all'
+                  ? 'bg-white text-black'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setSearchType('artist')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                searchType === 'artist'
+                  ? 'bg-cyan-500 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Artists
+            </button>
+            <button
+              onClick={() => setSearchType('manager')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                searchType === 'manager'
+                  ? 'bg-fuchsia-500 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Managers
+            </button>
+          </div>
+          
           <Button className="flex-shrink-0 text-xs sm:text-sm px-3 sm:px-5">Search</Button>
         </div>
       </div>

@@ -1,24 +1,82 @@
-import React from 'react';
-import { Zap, MapPin, ArrowUpRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Zap, MapPin, ArrowUpRight } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
 
-const ArtistCollaborationView = () => (
-  <div className="space-y-6 sm:space-y-8 pb-12">
-    <div className="flex items-center mb-4 sm:mb-6">
-      <BackButton />
-    </div>
-    <div className="flex flex-col gap-4 sm:gap-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">Jam Sessions</h1>
-        <p className="text-gray-400 text-sm sm:text-base max-w-lg">Find musicians for your next project, backup singers for a gig, or just people to jam with.</p>
+const ArtistCollaborationView = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
+
+  return (
+    <div className="space-y-6 sm:space-y-8 pb-12">
+      <div className="flex items-center mb-4 sm:mb-6">
+        <BackButton />
       </div>
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
-        <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm flex-shrink-0">All Genres</Button>
-        <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm flex-shrink-0">Near Me</Button>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-600 rounded-2xl blur opacity-25"></div>
+        <div className="relative bg-[#0F0F13] p-2 sm:p-3 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2 border border-white/10 shadow-2xl">
+          <div className="flex items-center flex-1">
+            <Search className="ml-2 sm:ml-4 text-gray-400 flex-shrink-0" size={18} sm={24} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search artists or managers..."
+              className="w-full bg-transparent border-none text-white text-sm sm:text-lg px-2 sm:px-4 py-3 sm:py-4 focus:outline-none focus:ring-0 placeholder:text-gray-600 min-w-0"
+            />
+          </div>
+
+          {/* Search Type Filter */}
+          <div className="flex gap-1 sm:gap-2 p-1 bg-black/20 rounded-xl">
+            <button
+              onClick={() => setSearchType('all')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                searchType === 'all'
+                  ? 'bg-white text-black'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setSearchType('artist')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                searchType === 'artist'
+                  ? 'bg-cyan-500 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Artists
+            </button>
+            <button
+              onClick={() => setSearchType('manager')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
+                searchType === 'manager'
+                  ? 'bg-fuchsia-500 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Managers
+            </button>
+          </div>
+
+          <Button className="flex-shrink-0 text-xs sm:text-sm px-3 sm:px-5">Search</Button>
+        </div>
       </div>
-    </div>
+
+      <div className="flex flex-col gap-4 sm:gap-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">Jam Sessions</h1>
+          <p className="text-gray-400 text-sm sm:text-base max-w-lg">Find musicians for your next project, backup singers for a gig, or just people to jam with.</p>
+        </div>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+          <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm flex-shrink-0">All Genres</Button>
+          <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm flex-shrink-0">Near Me</Button>
+        </div>
+      </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {[
         { title: "Looking for Bassist", genre: "Jazz / Funk", loc: "Brooklyn, NY", user: "Aria Sterling", type: "Gig", time: "2 days ago" },
@@ -55,8 +113,9 @@ const ArtistCollaborationView = () => (
         <h3 className="text-base sm:text-lg font-bold text-white mb-1">Post a Request</h3>
         <p className="text-sm text-gray-400">Looking for talent? Start here.</p>
       </div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default ArtistCollaborationView;
