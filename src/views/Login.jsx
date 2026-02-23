@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, User } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -9,14 +10,17 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [identifier, setIdentifier] = useState(''); // Email or username
   const [formData, setFormData] = useState({
-    email: '',
     password: '',
   });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
+    if (e.target.name === 'identifier') {
+      setIdentifier(e.target.value);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -25,12 +29,32 @@ const Login = () => {
     setError('');
 
     try {
-      const { data, error: signInError } = await signIn(formData.email, formData.password);
+      // Determine if identifier is email or username
+      const isEmail = identifier.includes('@');
       
-      if (signInError) throw signInError;
+      let emailToUse = identifier;
+      
+      if (!isEmail) {
+        // Login with username - first get the user's email from username
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', identifier.toLowerCase())
+          .single();
+        
+        if (profileError || !profileData) {
+          throw new Error('User not found. Please check your username.');
+        }
+        
+        emailToUse = profileData.email;
+      }
+      
+      const { data: signInData, error: signInError } = await signIn(emailToUse, formData.password);
+      
+      if (signInError) throw new Error(signInError);
       
       // Check if email is confirmed
-      if (data.user && !data.user.email_confirmed_at && !data.user.confirmed_at) {
+      if (signInData?.user && !signInData.user.email_confirmed_at && !signInData.user.confirmed_at) {
         setError('Please confirm your email address before logging in. Check your inbox for the confirmation link.');
         setLoading(false);
         return;
@@ -78,15 +102,19 @@ const Login = () => {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email</label>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email or User ID</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                {identifier.includes('@') ? (
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                ) : (
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                )}
                 <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
+                  type="text"
+                  name="identifier"
+                  value={identifier}
                   onChange={handleChange}
-                  placeholder="you@example.com"
+                  placeholder="Email or @username"
                   className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-fuchsia-500/50 focus:ring-1 focus:ring-fuchsia-500/50 transition-all"
                   required
                 />
