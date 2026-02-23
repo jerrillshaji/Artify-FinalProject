@@ -2,10 +2,14 @@ import React from 'react';
 import { Search, Star, Check, ChevronRight } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { MOCK_ARTISTS } from '../data/mockData';
+import BackButton from '../components/layout/BackButton';
 
 const ManagerDiscovery = () => {
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-10 pb-12">
+      <div className="flex items-center mb-4 sm:mb-6">
+        <BackButton />
+      </div>
       <div className="relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-600 rounded-2xl blur opacity-25"></div>
         <div className="relative bg-[#0F0F13] p-2 sm:p-3 rounded-2xl flex items-center border border-white/10 shadow-2xl">

@@ -1,10 +1,15 @@
 import React from 'react';
 import { Search, MessageCircle, MoreHorizontal, Paperclip, Mic, Send } from 'lucide-react';
 import { MOCK_CHATS, MOCK_ARTISTS } from '../data/mockData';
+import BackButton from '../components/layout/BackButton';
 
 const MessagesView = () => {
   return (
-    <div className="grid md:grid-cols-3 gap-4 sm:gap-6 h-auto md:h-[calc(100vh-160px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex flex-col h-auto md:h-[calc(100vh-160px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center mb-4 sm:mb-6">
+        <BackButton />
+      </div>
+      <div className="grid md:grid-cols-3 gap-4 sm:gap-6 flex-1">
       <div className="md:col-span-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl h-[400px] sm:h-[500px] md:h-auto">
         <div className="p-4 sm:p-6 border-b border-white/10">
           <h2 className="text-lg sm:text-xl font-black text-white mb-3 sm:mb-4">Messages</h2>
@@ -103,6 +108,7 @@ const MessagesView = () => {
             <button className="p-1.5 sm:p-2 bg-white text-black rounded-full hover:bg-fuchsia-400 hover:text-white transition-all transform hover:scale-105 hover:shadow-[0_0_15px_rgba(192,38,211,0.5)] flex-shrink-0"><Send size={16} sm={18}/></button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -2,9 +2,13 @@ import React from 'react';
 import { Zap, MapPin, ArrowUpRight } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import BackButton from '../components/layout/BackButton';
 
 const ArtistCollaborationView = () => (
   <div className="space-y-6 sm:space-y-8 pb-12">
+    <div className="flex items-center mb-4 sm:mb-6">
+      <BackButton />
+    </div>
     <div className="flex flex-col gap-4 sm:gap-6">
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">Jam Sessions</h1>

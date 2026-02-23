@@ -2,10 +2,14 @@ import React from 'react';
 import { Check, Star, Camera, Play } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { MOCK_ARTISTS } from '../data/mockData';
+import BackButton from '../components/layout/BackButton';
 
 const ProfileView = ({ role }) => {
   return (
     <div className="relative">
+      <div className="flex items-center mb-4 sm:mb-6">
+        <BackButton />
+      </div>
       <div className="h-48 sm:h-56 md:h-64 lg:h-80 rounded-[1.5rem] sm:rounded-[2rem] md:rounded-[2.5rem] relative overflow-hidden mb-16 sm:mb-20 md:mb-24">
         <img src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent"></div>
