@@ -81,12 +81,14 @@ export function SupabaseProvider({ children }) {
         password,
         options: {
           data: metadata,
-          // Note: emailRedirectTo is used after email confirmation
+          // Redirect after email confirmation
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       
       if (error) {
+        // Supabase error - email sending issues will be in error.message
+        console.error('Sign up error:', error);
         throw new Error(error.message);
       }
       
@@ -94,7 +96,22 @@ export function SupabaseProvider({ children }) {
         throw new Error('Failed to create account');
       }
       
-      return { data, error: null };
+      if (!data.user) {
+        throw new Error('User creation failed');
+      }
+      
+      // Check if email confirmation is required
+      // If email_confirmed_at is null, email was sent and waiting for confirmation
+      const emailSent = !data.user.email_confirmed_at;
+      
+      console.log('Sign up successful:', {
+        userId: data.user.id,
+        email: data.user.email,
+        emailSent: emailSent,
+        emailConfirmed: data.user.email_confirmed_at !== null,
+      });
+      
+      return { data, error: null, emailSent };
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;
@@ -123,15 +140,42 @@ export function SupabaseProvider({ children }) {
     }
   };
 
+  const resendConfirmation = async (email) => {
+    try {
+      const { data, error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+      
+      if (error) {
+        console.error('Resend error:', error);
+        throw new Error(error.message || 'Failed to resend confirmation email');
+      }
+      
+      // Log successful resend
+      console.log('Confirmation email resent to:', email);
+      
+      return { data, error: null, emailSent: true };
+    } catch (error) {
+      console.error('Resend error:', error);
+      throw error;
+    }
+  };
+
   const signInWithProvider = async (provider) => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/feed`,
-      },
-    });
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/feed`,
+        },
+      });
+      if (error) throw error;
+      return { data, error: null };
+    } catch (error) {
+      console.error('OAuth sign in error:', error);
+      throw error;
+    }
   };
 
   const signOut = async () => {

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Music, Briefcase, Check, X, MailCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
+import { useSupabase } from '../context/SupabaseContext';
 
 const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signUp } = useAuth();
+  const { resendConfirmation } = useSupabase();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -16,7 +17,8 @@ const Register = () => {
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [countdown, setCountdown] = useState(5);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -24,18 +26,29 @@ const Register = () => {
     confirmPassword: '',
   });
 
-  // Countdown timer for auto-redirect
-  useEffect(() => {
-    if (showConfirmationModal && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (showConfirmationModal && countdown === 0) {
-      navigate('/login');
-    }
-  }, [showConfirmationModal, countdown, navigate]);
-
   const handleManualRedirect = () => {
     navigate('/login');
+  };
+
+  const handleResendEmail = async () => {
+    setResendingEmail(true);
+    setResendSuccess(false);
+    
+    try {
+      // Use the resendConfirmation function from context
+      const { emailSent } = await resendConfirmation(formData.email);
+      
+      if (emailSent) {
+        setResendSuccess(true);
+        // Clear success message after 5 seconds
+        setTimeout(() => setResendSuccess(false), 5000);
+      }
+    } catch (err) {
+      console.error('Resend error:', err);
+      setError(err.message || 'Failed to resend confirmation email. Please try again or contact support.');
+    } finally {
+      setResendingEmail(false);
+    }
   };
 
   // Debounced username availability check
@@ -44,11 +57,28 @@ const Register = () => {
       if (username.length >= 3) {
         setCheckingUsername(true);
         try {
+          // Direct query to check if username exists
           const { data, error } = await supabase
-            .rpc('check_username_availability', { check_username: username });
+            .from('profiles')
+            .select('username')
+            .eq('username', username.toLowerCase())
+            .single();
           
-          if (error) throw error;
-          setUsernameAvailable(data);
+          // If data returned, username is taken
+          // If error (PGRST116 - not found), username is available
+          if (error) {
+            if (error.code === 'PGRST116') {
+              // No rows found - username is available!
+              setUsernameAvailable(true);
+            } else {
+              // Other error - assume available to not block registration
+              console.error('Username check error:', error);
+              setUsernameAvailable(null);
+            }
+          } else {
+            // Data returned - username is taken
+            setUsernameAvailable(false);
+          }
         } catch (err) {
           console.error('Username check error:', err);
           setUsernameAvailable(null);
@@ -90,10 +120,42 @@ const Register = () => {
       return;
     }
 
+    // Check if username contains only valid characters
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(username)) {
+      setError('Username can only contain letters, numbers, and underscores');
+      setLoading(false);
+      return;
+    }
+
+    // Check username availability
     if (usernameAvailable === false) {
       setError('This username is already taken. Please choose another.');
       setLoading(false);
       return;
+    }
+
+    // If username availability hasn't been checked yet, check now
+    if (usernameAvailable === null && username.length >= 3) {
+      setCheckingUsername(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('username', username.toLowerCase())
+          .single();
+        
+        if (data) {
+          setError('This username is already taken. Please choose another.');
+          setLoading(false);
+          setCheckingUsername(false);
+          return;
+        }
+      } catch (err) {
+        // Continue if error (username likely available)
+      } finally {
+        setCheckingUsername(false);
+      }
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -117,16 +179,23 @@ const Register = () => {
       
       if (signUpError) throw new Error(signUpError);
       
+      // Check if user was created successfully
+      if (!data?.user) {
+        throw new Error('Failed to create account. Please try again.');
+      }
+      
       // Check if email confirmation is required
-      if (data?.user && !data.user.email_confirmed_at) {
-        // Show confirmation modal
+      if (data.user && !data.user.email_confirmed_at) {
+        // Email was sent successfully - show confirmation modal
         setShowConfirmationModal(true);
         return;
       }
       
+      // Email not required or already confirmed
       navigate('/feed');
     } catch (err) {
-      setError(err.message || 'Failed to create account');
+      console.error('Registration error:', err);
+      setError(err.message || 'Failed to create account. Please check your details and try again.');
     } finally {
       setLoading(false);
     }
@@ -206,10 +275,17 @@ const Register = () => {
                   value={username}
                   onChange={handleChange}
                   placeholder="Choose a unique ID"
-                  className="w-full bg-black/20 border border-white/10 rounded-xl pl-11 pr-10 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-fuchsia-500/50 focus:ring-1 focus:ring-fuchsia-500/50 transition-all"
+                  className={`w-full bg-black/20 border rounded-xl pl-11 pr-10 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:ring-1 transition-all ${
+                    usernameAvailable === true
+                      ? 'border-emerald-500/50 focus:border-emerald-500/50 focus:ring-emerald-500/50'
+                      : usernameAvailable === false
+                      ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/50'
+                      : 'border-white/10 focus:border-fuchsia-500/50 focus:ring-fuchsia-500/50'
+                  }`}
                   required
                   pattern="[a-zA-Z0-9_]+"
                   minLength={3}
+                  disabled={checkingUsername}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {checkingUsername && (
@@ -230,7 +306,12 @@ const Register = () => {
               )}
               {username.length >= 3 && usernameAvailable === false && (
                 <p className="text-xs text-red-400 flex items-center gap-1">
-                  <X size={12} /> Username taken
+                  <X size={12} /> Username already taken
+                </p>
+              )}
+              {username.length > 0 && username.length < 3 && (
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <span>Username must be at least 3 characters</span>
                 </p>
               )}
             </div>
@@ -320,6 +401,16 @@ const Register = () => {
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                   <span>Creating account...</span>
                 </>
+              ) : checkingUsername ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Checking username...</span>
+                </>
+              ) : usernameAvailable === false ? (
+                <>
+                  <X size={20} />
+                  <span>Username Taken</span>
+                </>
               ) : (
                 'Create Account'
               )}
@@ -363,23 +454,46 @@ const Register = () => {
                   Click the link in the email to activate your account
                 </p>
               </div>
+
+              {/* Resend Success Message */}
+              {resendSuccess && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-4">
+                  <p className="text-emerald-400 text-xs sm:text-sm flex items-center justify-center gap-2">
+                    <Check size={14} /> Confirmation email resent!
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-3">
+                <button
+                  onClick={handleResendEmail}
+                  disabled={resendingEmail}
+                  className="w-full py-3 px-4 bg-white/5 border border-white/10 text-white font-bold rounded-xl hover:bg-white/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {resendingEmail ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail size={18} />
+                      <span>Resend Confirmation Email</span>
+                    </>
+                  )}
+                </button>
+                
                 <button
                   onClick={handleManualRedirect}
                   className="w-full py-3 px-4 bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(192,38,211,0.4)] hover:shadow-[0_0_30px_rgba(192,38,211,0.6)] transition-all duration-300 flex items-center justify-center gap-2"
                 >
                   Go to Login
                 </button>
-                
-                <div className="flex items-center justify-center gap-2 text-gray-500 text-xs sm:text-sm">
-                  <span>Redirecting in</span>
-                  <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white font-bold">
-                    {countdown}
-                  </span>
-                  <span>seconds...</span>
-                </div>
               </div>
+
+              <p className="text-gray-500 text-xs mt-4">
+                Didn't receive the email? Check your spam folder or click resend above.
+              </p>
             </div>
           </div>
         </div>

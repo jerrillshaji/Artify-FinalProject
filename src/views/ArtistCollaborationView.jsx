@@ -62,18 +62,20 @@ const ArtistCollaborationView = () => {
       const conditions = [];
       
       if (searchQuery.trim()) {
-        // Search by username (exact match or partial)
-        conditions.push(`username.ilike.%${searchQuery}%`);
-        // Search by full name
-        conditions.push(`full_name.ilike.%${searchQuery}%`);
-        // Search by location
-        conditions.push(`location.ilike.%${searchQuery}%`);
+        const searchTerm = searchQuery.trim().toLowerCase();
         
-        // Also search in artists table
+        // Search by username (partial match, case-insensitive)
+        conditions.push(`username.ilike.%${searchTerm}%`);
+        // Search by full name (partial match, case-insensitive)
+        conditions.push(`full_name.ilike.%${searchQuery.trim()}%`);
+        // Search by location (partial match, case-insensitive)
+        conditions.push(`location.ilike.%${searchQuery.trim()}%`);
+        
+        // Also search in artists table (stage name and tags)
         const { data: artistsData } = await supabase
           .from('artists')
           .select('id')
-          .or(`stage_name.ilike.%${searchQuery}%,tags.cs.{${searchQuery}}`);
+          .or(`stage_name.ilike.%${searchQuery.trim()}%,tags.cs.{${searchTerm}}`);
         
         if (artistsData && artistsData.length > 0) {
           const artistIds = artistsData.map(a => a.id);

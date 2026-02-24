@@ -2,6 +2,12 @@
 -- Run this in your Supabase SQL Editor to set up the database
 
 -- =============================================
+-- ENABLE REQUIRED EXTENSIONS
+-- =============================================
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For fuzzy text search
+
+-- =============================================
 -- DROP EXISTING TABLES (Clean Slate)
 -- =============================================
 -- Drop tables in reverse order of dependencies
@@ -27,9 +33,7 @@ DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 DROP FUNCTION IF EXISTS public.handle_updated_at() CASCADE;
 DROP FUNCTION IF EXISTS public.increment_followers(UUID) CASCADE;
 DROP FUNCTION IF EXISTS public.decrement_followers(UUID) CASCADE;
-
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+DROP FUNCTION IF EXISTS public.check_username_availability(TEXT) CASCADE;
 
 -- =============================================
 -- PROFILES TABLE
@@ -54,7 +58,6 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- Index for fast username searches
 CREATE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username);
-CREATE INDEX IF NOT EXISTS idx_profiles_username_search ON profiles USING gin(username gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
 
 -- =============================================

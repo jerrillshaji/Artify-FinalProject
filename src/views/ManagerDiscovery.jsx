@@ -39,12 +39,12 @@ const ManagerDiscovery = () => {
       const conditions = [];
       
       if (searchQuery.trim()) {
-        // Search by username (exact match or partial)
-        conditions.push(`username.ilike.%${searchQuery}%`);
-        // Search by full name
-        conditions.push(`full_name.ilike.%${searchQuery}%`);
-        // Search by location
-        conditions.push(`location.ilike.%${searchQuery}%`);
+        // Search by username (partial match, case-insensitive)
+        conditions.push(`username.ilike.%${searchQuery.trim().toLowerCase()}%`);
+        // Search by full name (partial match, case-insensitive)
+        conditions.push(`full_name.ilike.%${searchQuery.trim()}%`);
+        // Search by location (partial match, case-insensitive)
+        conditions.push(`location.ilike.%${searchQuery.trim()}%`);
       }
 
       if (selectedGenre) {
