@@ -74,6 +74,99 @@ export function SupabaseProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const normalizeUsername = (value, fallbackId = '') => {
+    const cleaned = (value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+
+    if (cleaned.length >= 3) return cleaned;
+    return `user_${fallbackId.slice(0, 8) || 'new'}`;
+  };
+
+  const resolveUniqueUsername = async (baseUsername, userId) => {
+    let attempt = 0;
+    let candidate = baseUsername;
+
+    while (attempt < 25) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', candidate)
+        .maybeSingle();
+
+      if (!data || data.id === userId) {
+        return candidate;
+      }
+
+      attempt += 1;
+      candidate = `${baseUsername}_${attempt}`;
+    }
+
+    return `${baseUsername}_${Date.now().toString().slice(-5)}`;
+  };
+
+  const bootstrapUserProfile = async (createdUser, metadata = {}) => {
+    if (!createdUser?.id) return;
+
+    const userRole = ['artist', 'manager'].includes(metadata?.role)
+      ? metadata.role
+      : (createdUser.user_metadata?.role || 'artist');
+
+    const fullName = metadata?.full_name
+      || createdUser.user_metadata?.full_name
+      || createdUser.email?.split('@')[0]
+      || 'New User';
+
+    const baseUsername = normalizeUsername(
+      metadata?.username || createdUser.user_metadata?.username || createdUser.email?.split('@')[0],
+      createdUser.id
+    );
+
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .eq('id', createdUser.id)
+      .maybeSingle();
+
+    const username = existingProfile?.username || await resolveUniqueUsername(baseUsername, createdUser.id);
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: createdUser.id,
+        email: createdUser.email,
+        full_name: fullName,
+        role: userRole,
+        username,
+      }, { onConflict: 'id' });
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    if (userRole === 'artist') {
+      const { error: artistError } = await supabase
+        .from('artists')
+        .upsert({
+          id: createdUser.id,
+          stage_name: fullName,
+        }, { onConflict: 'id' });
+
+      if (artistError) throw artistError;
+    } else {
+      const { error: managerError } = await supabase
+        .from('managers')
+        .upsert({
+          id: createdUser.id,
+          company_name: fullName,
+        }, { onConflict: 'id' });
+
+      if (managerError) throw managerError;
+    }
+  };
+
   const signUp = async (email, password, metadata = {}) => {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -92,6 +185,9 @@ export function SupabaseProvider({ children }) {
         if (error.message?.includes('Database error saving new user')) {
           throw new Error('Database trigger failed while creating your profile. Run the latest supabase-schema.sql in Supabase SQL Editor and ensure the handle_new_user() trigger exists.');
         }
+        if (error.message?.includes('Error sending confirmation email')) {
+          throw new Error('Confirmation email could not be sent. Configure SMTP in Supabase Dashboard (Project Settings → Auth → SMTP Settings), verify sender domain/email, and keep Confirm email enabled in Authentication → Providers → Email.');
+        }
         throw new Error(error.message);
       }
       
@@ -105,6 +201,15 @@ export function SupabaseProvider({ children }) {
       
       const emailConfirmed = Boolean(data.user.email_confirmed_at || data.user.confirmed_at);
       const emailSent = !emailConfirmed;
+
+      if (data.session) {
+        try {
+          await bootstrapUserProfile(data.user, metadata);
+        } catch (bootstrapError) {
+          console.error('Profile bootstrap error:', bootstrapError);
+          throw new Error('Account created but profile setup failed. Please retry signup or login again.');
+        }
+      }
       
       console.log('Sign up successful:', {
         userId: data.user.id,

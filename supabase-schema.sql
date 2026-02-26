@@ -14,6 +14,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 -- SECTION 2: CLEAN SLATE (DROP IN SAFE ORDER)
 -- ============================================================
 DROP TABLE IF EXISTS public.messages CASCADE;
+DROP TABLE IF EXISTS public.follows CASCADE;
 DROP TABLE IF EXISTS public.collaborations CASCADE;
 DROP TABLE IF EXISTS public.bookings CASCADE;
 DROP TABLE IF EXISTS public.events CASCADE;
@@ -28,12 +29,15 @@ DROP TRIGGER IF EXISTS set_updated_at_managers ON public.managers;
 DROP TRIGGER IF EXISTS set_updated_at_events ON public.events;
 DROP TRIGGER IF EXISTS set_updated_at_bookings ON public.bookings;
 DROP TRIGGER IF EXISTS set_updated_at_collaborations ON public.collaborations;
+DROP TRIGGER IF EXISTS follows_after_insert ON public.follows;
+DROP TRIGGER IF EXISTS follows_after_delete ON public.follows;
 
 DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 DROP FUNCTION IF EXISTS public.handle_updated_at() CASCADE;
 DROP FUNCTION IF EXISTS public.increment_followers(UUID) CASCADE;
 DROP FUNCTION IF EXISTS public.decrement_followers(UUID) CASCADE;
 DROP FUNCTION IF EXISTS public.check_username_availability(TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.adjust_followers_count() CASCADE;
 
 -- ============================================================
 -- SECTION 3: CORE TABLES
@@ -139,6 +143,14 @@ CREATE TABLE IF NOT EXISTS public.messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.follows (
+  follower_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  following_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (follower_id, following_id),
+  CONSTRAINT follows_no_self_follow CHECK (follower_id <> following_id)
+);
+
 -- ============================================================
 -- SECTION 4: INDEXES
 -- ============================================================
@@ -161,6 +173,8 @@ CREATE INDEX IF NOT EXISTS idx_collaborations_status ON public.collaborations(st
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON public.messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_receiver ON public.messages(receiver_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created ON public.messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_follows_follower ON public.follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_follows_following ON public.follows(following_id);
 
 -- ============================================================
 -- SECTION 5: RLS + POLICIES
@@ -172,6 +186,7 @@ ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.collaborations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.follows ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public profiles are viewable by everyone"
   ON public.profiles FOR SELECT
@@ -264,6 +279,18 @@ CREATE POLICY "Users can view own messages"
 CREATE POLICY "Users can send messages"
   ON public.messages FOR INSERT
   WITH CHECK (sender_id = auth.uid());
+
+CREATE POLICY "Follows are viewable by everyone"
+  ON public.follows FOR SELECT
+  USING (TRUE);
+
+CREATE POLICY "Users can follow from own profile"
+  ON public.follows FOR INSERT
+  WITH CHECK (follower_id = auth.uid());
+
+CREATE POLICY "Users can unfollow from own profile"
+  ON public.follows FOR DELETE
+  USING (follower_id = auth.uid());
 
 -- ============================================================
 -- SECTION 6: FUNCTIONS + TRIGGERS
@@ -409,6 +436,35 @@ BEGIN
   WHERE id = profile_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.adjust_followers_count()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE public.profiles
+    SET followers_count = followers_count + 1
+    WHERE id = NEW.following_id;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE public.profiles
+    SET followers_count = GREATEST(0, followers_count - 1)
+    WHERE id = OLD.following_id;
+    RETURN OLD;
+  END IF;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS follows_after_insert ON public.follows;
+CREATE TRIGGER follows_after_insert
+  AFTER INSERT ON public.follows
+  FOR EACH ROW EXECUTE FUNCTION public.adjust_followers_count();
+
+DROP TRIGGER IF EXISTS follows_after_delete ON public.follows;
+CREATE TRIGGER follows_after_delete
+  AFTER DELETE ON public.follows
+  FOR EACH ROW EXECUTE FUNCTION public.adjust_followers_count();
 
 -- ============================================================
 -- SECTION 7: SIGNUP / AUTH DIAGNOSTICS & REPAIR QUERIES

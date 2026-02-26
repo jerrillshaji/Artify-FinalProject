@@ -15,6 +15,13 @@ const ProfileView = ({ role }) => {
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [showConnectionsModal, setShowConnectionsModal] = useState(false);
+  const [activeConnectionsTab, setActiveConnectionsTab] = useState('followers');
+  const [connectionsLoading, setConnectionsLoading] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [followingCount, setFollowingCount] = useState(0);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -136,15 +143,138 @@ const ProfileView = ({ role }) => {
   }, [user, supabase, username, role]);
 
   useEffect(() => {
-    setIsFollowing(false);
-  }, [profile?.id, username]);
+    const fetchFollowState = async () => {
+      if (!user?.id || !profile?.id || user.id === profile.id) {
+        setIsFollowing(false);
+        return;
+      }
 
-  const handleFollow = async () => {
-    if (!user || !profile?.id || isFollowing) {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('follower_id', user.id)
+        .eq('following_id', profile.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking follow status:', error);
+        setIsFollowing(false);
+        return;
+      }
+
+      setIsFollowing(Boolean(data));
+    };
+
+    fetchFollowState();
+  }, [supabase, user?.id, profile?.id]);
+
+  useEffect(() => {
+    const fetchConnectionCounts = async () => {
+      if (!profile?.id) return;
+
+      const [{ count: followerCount }, { count: followingTotal }] = await Promise.all([
+        supabase
+          .from('follows')
+          .select('follower_id', { count: 'exact', head: true })
+          .eq('following_id', profile.id),
+        supabase
+          .from('follows')
+          .select('following_id', { count: 'exact', head: true })
+          .eq('follower_id', profile.id),
+      ]);
+
+      setProfile((prevProfile) => {
+        if (!prevProfile) return prevProfile;
+        return {
+          ...prevProfile,
+          followers_count: followerCount ?? prevProfile.followers_count ?? 0,
+        };
+      });
+
+      setFollowingCount(followingTotal ?? 0);
+    };
+
+    fetchConnectionCounts();
+  }, [supabase, profile?.id]);
+
+  const mapUsersByIdOrder = (ids, users = []) => {
+    const byId = new Map(users.map((item) => [item.id, item]));
+    return ids.map((id) => byId.get(id)).filter(Boolean);
+  };
+
+  const loadConnections = async () => {
+    if (!profile?.id) return;
+
+    setConnectionsLoading(true);
+    try {
+      const [{ data: followerLinks }, { data: followingLinks }] = await Promise.all([
+        supabase
+          .from('follows')
+          .select('follower_id, created_at')
+          .eq('following_id', profile.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('follows')
+          .select('following_id, created_at')
+          .eq('follower_id', profile.id)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      const followerIds = (followerLinks || []).map((item) => item.follower_id);
+      const followingIds = (followingLinks || []).map((item) => item.following_id);
+      const uniqueIds = [...new Set([...followerIds, ...followingIds])];
+
+      if (uniqueIds.length === 0) {
+        setFollowersList([]);
+        setFollowingList([]);
+        return;
+      }
+
+      const { data: usersData } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url, role, is_verified')
+        .in('id', uniqueIds);
+
+      setFollowersList(mapUsersByIdOrder(followerIds, usersData || []));
+      setFollowingList(mapUsersByIdOrder(followingIds, usersData || []));
+    } catch (error) {
+      console.error('Error loading followers/following:', error);
+      setFollowersList([]);
+      setFollowingList([]);
+    } finally {
+      setConnectionsLoading(false);
+    }
+  };
+
+  const handleOpenConnections = async (tab) => {
+    setActiveConnectionsTab(tab);
+    setShowConnectionsModal(true);
+    await loadConnections();
+  };
+
+  const getProfilePath = (targetProfile) => {
+    const normalizedUsername = targetProfile?.username?.toLowerCase()?.trim();
+    if (normalizedUsername && /^[a-z0-9_]{3,}$/.test(normalizedUsername)) {
+      return `/${normalizedUsername}`;
+    }
+    return `/profile?id=${targetProfile?.id}`;
+  };
+
+  const handleOpenUserFromConnections = (targetProfile) => {
+    if (!targetProfile?.id) return;
+    setShowConnectionsModal(false);
+    navigate(getProfilePath(targetProfile));
+  };
+
+  const handleFollowToggle = async () => {
+    if (!user || !profile?.id || user.id === profile.id || followLoading) {
       return;
     }
 
-    setIsFollowing(true);
+    setFollowLoading(true);
+    const nextIsFollowing = !isFollowing;
+    setIsFollowing(nextIsFollowing);
+
     setProfile((prevProfile) => {
       if (!prevProfile) {
         return prevProfile;
@@ -152,17 +282,34 @@ const ProfileView = ({ role }) => {
 
       return {
         ...prevProfile,
-        followers_count: (prevProfile.followers_count || 0) + 1,
+        followers_count: nextIsFollowing
+          ? (prevProfile.followers_count || 0) + 1
+          : Math.max(0, (prevProfile.followers_count || 1) - 1),
       };
     });
 
-    const { error } = await supabase.rpc('increment_followers', {
-      profile_id: profile.id,
-    });
+    let error = null;
+
+    if (nextIsFollowing) {
+      const { error: insertError } = await supabase
+        .from('follows')
+        .upsert({
+          follower_id: user.id,
+          following_id: profile.id,
+        }, { onConflict: 'follower_id,following_id' });
+      error = insertError;
+    } else {
+      const { error: deleteError } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('following_id', profile.id);
+      error = deleteError;
+    }
 
     if (error) {
-      console.error('Error following profile:', error);
-      setIsFollowing(false);
+      console.error('Error toggling follow state:', error);
+      setIsFollowing(!nextIsFollowing);
       setProfile((prevProfile) => {
         if (!prevProfile) {
           return prevProfile;
@@ -170,10 +317,14 @@ const ProfileView = ({ role }) => {
 
         return {
           ...prevProfile,
-          followers_count: Math.max(0, (prevProfile.followers_count || 1) - 1),
+          followers_count: nextIsFollowing
+            ? Math.max(0, (prevProfile.followers_count || 1) - 1)
+            : (prevProfile.followers_count || 0) + 1,
         };
       });
     }
+
+    setFollowLoading(false);
   };
 
   const handleShare = (platform) => {
@@ -232,6 +383,7 @@ const ProfileView = ({ role }) => {
   const location = profile?.location || 'Location not set';
   const isVerified = profile?.is_verified || false;
   const followers = profile?.followers_count || 0;
+  const following = followingCount || 0;
   const rating = profile?.rating || 0;
   const isOwnProfile = !username || (user?.id && profile?.id === user.id);
 
@@ -278,10 +430,10 @@ const ProfileView = ({ role }) => {
                 <Button
                   variant={isFollowing ? 'secondary' : 'primary'}
                   className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2"
-                  onClick={handleFollow}
-                  disabled={isFollowing}
+                  onClick={handleFollowToggle}
+                  disabled={followLoading}
                 >
-                  {isFollowing ? 'Following' : 'Follow'}
+                  {followLoading ? 'Updating...' : isFollowing ? 'Unfollow' : 'Follow'}
                 </Button>
                 <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Message</Button>
                 <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Favorite</Button>
@@ -302,10 +454,36 @@ const ProfileView = ({ role }) => {
           <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/5">
             <h3 className="text-gray-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-3 sm:mb-4">Stats</h3>
             <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-300 text-sm sm:text-base">Followers</span>
-              <span className="font-bold text-white text-sm sm:text-base">
+              <button
+                type="button"
+                onClick={() => handleOpenConnections('followers')}
+                className="text-gray-300 text-sm sm:text-base hover:text-white transition-colors"
+              >
+                Followers
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenConnections('followers')}
+                className="font-bold text-white text-sm sm:text-base hover:text-fuchsia-400 transition-colors"
+              >
                 {followers >= 1000 ? `${(followers / 1000).toFixed(1)}k` : followers}
-              </span>
+              </button>
+            </div>
+            <div className="flex justify-between items-center mb-2">
+              <button
+                type="button"
+                onClick={() => handleOpenConnections('following')}
+                className="text-gray-300 text-sm sm:text-base hover:text-white transition-colors"
+              >
+                Following
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenConnections('following')}
+                className="font-bold text-white text-sm sm:text-base hover:text-fuchsia-400 transition-colors"
+              >
+                {following >= 1000 ? `${(following / 1000).toFixed(1)}k` : following}
+              </button>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-300 text-sm sm:text-base">Rating</span>
@@ -349,6 +527,86 @@ const ProfileView = ({ role }) => {
       </div>
 
       {/* Share Modal */}
+      {showConnectionsModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#111111] border border-white/10 rounded-2xl sm:rounded-3xl w-full max-w-lg max-h-[85vh] overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h3 className="text-white font-bold text-lg">Connections</h3>
+              <button
+                onClick={() => setShowConnectionsModal(false)}
+                className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <X size={18} className="text-white" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 border-b border-white/10">
+              <button
+                onClick={() => setActiveConnectionsTab('followers')}
+                className={`py-3 text-sm font-bold transition-colors ${
+                  activeConnectionsTab === 'followers'
+                    ? 'text-white border-b-2 border-fuchsia-500'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Followers ({followers})
+              </button>
+              <button
+                onClick={() => setActiveConnectionsTab('following')}
+                className={`py-3 text-sm font-bold transition-colors ${
+                  activeConnectionsTab === 'following'
+                    ? 'text-white border-b-2 border-fuchsia-500'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Following ({following})
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto">
+              {connectionsLoading ? (
+                <div className="py-12 flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                </div>
+              ) : (
+                (activeConnectionsTab === 'followers' ? followersList : followingList).length > 0 ? (
+                  <div className="p-2">
+                    {(activeConnectionsTab === 'followers' ? followersList : followingList).map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleOpenUserFromConnections(item)}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
+                      >
+                        <img
+                          src={item.avatar_url || `https://i.pravatar.cc/150?u=${item.id}`}
+                          alt={item.full_name || item.username || 'User'}
+                          className="w-10 h-10 rounded-full object-cover border border-white/10"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white font-semibold truncate">
+                            @{item.username || item.id.slice(0, 8)}
+                          </p>
+                          <p className="text-gray-400 text-xs truncate">
+                            {item.full_name || 'No name set'}
+                          </p>
+                        </div>
+                        {item.is_verified && (
+                          <Check className="w-4 h-4 p-0.5 bg-cyan-500 text-black rounded-full" strokeWidth={4} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-12 text-center text-gray-500 text-sm">
+                    No {activeConnectionsTab} yet.
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showShareModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-3xl border border-white/10 w-full max-w-md p-8 relative shadow-2xl">
