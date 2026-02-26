@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+import { SupabaseProvider } from './context/SupabaseContext';
 import LoadingScreen from './components/ui/LoadingScreen';
 import MainLayout from './components/layout/MainLayout';
 import LandingPage from './views/LandingPage';
@@ -8,7 +9,7 @@ import Login from './views/Login';
 import Register from './views/Register';
 import AuthCallback from './views/AuthCallback';
 
-export default function App() {
+function AppContent() {
   const { user, signOut, loading } = useAuth();
 
   // Determine role from user metadata or default
@@ -41,4 +42,12 @@ export default function App() {
 
   // Protected routes (require login) - redirect directly to feed
   return <MainLayout user={user} role={role} onLogout={handleLogout} />;
+}
+
+export default function App() {
+  return (
+    <SupabaseProvider>
+      <AppContent />
+    </SupabaseProvider>
+  );
 }

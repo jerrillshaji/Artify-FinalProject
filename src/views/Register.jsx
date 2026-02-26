@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Music, Briefcase, Check, X, MailCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useSupabase } from '../context/SupabaseContext';
+import { supabase } from '../lib/supabase';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -57,27 +58,17 @@ const Register = () => {
       if (username.length >= 3) {
         setCheckingUsername(true);
         try {
-          // Direct query to check if username exists
-          const { data, error } = await supabase
+          // Count matching usernames to avoid 406 when no rows are found
+          const { count, error } = await supabase
             .from('profiles')
-            .select('username')
-            .eq('username', username.toLowerCase())
-            .single();
+            .select('id', { count: 'exact', head: true })
+            .eq('username', username.toLowerCase());
           
-          // If data returned, username is taken
-          // If error (PGRST116 - not found), username is available
           if (error) {
-            if (error.code === 'PGRST116') {
-              // No rows found - username is available!
-              setUsernameAvailable(true);
-            } else {
-              // Other error - assume available to not block registration
-              console.error('Username check error:', error);
-              setUsernameAvailable(null);
-            }
+            console.error('Username check error:', error);
+            setUsernameAvailable(null);
           } else {
-            // Data returned - username is taken
-            setUsernameAvailable(false);
+            setUsernameAvailable((count ?? 0) === 0);
           }
         } catch (err) {
           console.error('Username check error:', err);
@@ -139,13 +130,16 @@ const Register = () => {
     if (usernameAvailable === null && username.length >= 3) {
       setCheckingUsername(true);
       try {
-        const { data, error } = await supabase
+        const { count, error } = await supabase
           .from('profiles')
-          .select('username')
-          .eq('username', username.toLowerCase())
-          .single();
+          .select('id', { count: 'exact', head: true })
+          .eq('username', username.toLowerCase());
+
+        if (error) {
+          throw error;
+        }
         
-        if (data) {
+        if ((count ?? 0) > 0) {
           setError('This username is already taken. Please choose another.');
           setLoading(false);
           setCheckingUsername(false);

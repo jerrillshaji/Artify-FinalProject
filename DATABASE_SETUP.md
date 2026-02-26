@@ -229,6 +229,11 @@ Row Level Security ensures:
 SELECT * FROM pg_trigger WHERE tgname = 'on_auth_user_created';
 ```
 
+### Issue: `Database error saving new user` during signup
+**Solution**: Re-run the single consolidated `supabase-schema.sql` file in SQL Editor.
+
+It already includes trigger-repair logic, diagnostics, and auth helper queries in clearly separated comment sections.
+
 ### Issue: RLS blocking reads
 **Solution**: Verify policies:
 ```sql

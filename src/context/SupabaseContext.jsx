@@ -89,6 +89,9 @@ export function SupabaseProvider({ children }) {
       if (error) {
         // Supabase error - email sending issues will be in error.message
         console.error('Sign up error:', error);
+        if (error.message?.includes('Database error saving new user')) {
+          throw new Error('Database trigger failed while creating your profile. Run the latest supabase-schema.sql in Supabase SQL Editor and ensure the handle_new_user() trigger exists.');
+        }
         throw new Error(error.message);
       }
       
