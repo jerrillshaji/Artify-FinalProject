@@ -14,13 +14,14 @@ const ProfileView = ({ role }) => {
   const [loading, setLoading] = useState(true);
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
       setProfileNotFound(false);
 
-      if (!username && !profileIdParam && !user) {
+      if (!username && !user) {
         setLoading(false);
         setProfileNotFound(true);
         return;
@@ -42,9 +43,7 @@ const ProfileView = ({ role }) => {
 
         const { data: profileData, error: profileError } = username
           ? await profileQuery.eq('username', username.toLowerCase()).maybeSingle()
-          : profileIdParam
-            ? await profileQuery.eq('id', profileIdParam).maybeSingle()
-            : await profileQuery.eq('id', user.id).maybeSingle();
+          : await profileQuery.eq('id', user.id).maybeSingle();
 
         let resolvedProfile = profileData;
 
@@ -52,7 +51,7 @@ const ProfileView = ({ role }) => {
           throw profileError;
         }
 
-        if (!resolvedProfile && !username && !profileIdParam && user?.id) {
+        if (!resolvedProfile && !username && user?.id) {
           const profilePayload = {
             id: user.id,
             email: user.email,
@@ -104,7 +103,7 @@ const ProfileView = ({ role }) => {
         setProfile({ ...resolvedProfile, ...artistData });
       } catch (error) {
         console.error('Error fetching profile:', error);
-        if (!username && !profileIdParam && user) {
+          if (!username && user) {
           setProfile({
             id: user.id,
             email: user.email,
@@ -122,11 +121,52 @@ const ProfileView = ({ role }) => {
     };
 
     fetchProfile();
-  }, [user, supabase, username, profileIdParam, role]);
+  }, [user, supabase, username, role]);
+
+  useEffect(() => {
+    setIsFollowing(false);
+  }, [profile?.id, username]);
+
+  const handleFollow = async () => {
+    if (!user || !profile?.id || isFollowing) {
+      return;
+    }
+
+    setIsFollowing(true);
+    setProfile((prevProfile) => {
+      if (!prevProfile) {
+        return prevProfile;
+      }
+
+      return {
+        ...prevProfile,
+        followers_count: (prevProfile.followers_count || 0) + 1,
+      };
+    });
+
+    const { error } = await supabase.rpc('increment_followers', {
+      profile_id: profile.id,
+    });
+
+    if (error) {
+      console.error('Error following profile:', error);
+      setIsFollowing(false);
+      setProfile((prevProfile) => {
+        if (!prevProfile) {
+          return prevProfile;
+        }
+
+        return {
+          ...prevProfile,
+          followers_count: Math.max(0, (prevProfile.followers_count || 1) - 1),
+        };
+      });
+    }
+  };
 
   const handleShare = (platform) => {
     const profileUrl = `${window.location.origin}/${profile?.username || profile?.id}`;
-    const shareText = `Check out my profile on Artify: ${realName}`;
+    const shareText = `Check out my profile on Artify!`;
     
     switch(platform) {
       case 'instagram':
@@ -181,6 +221,7 @@ const ProfileView = ({ role }) => {
   const isVerified = profile?.is_verified || false;
   const followers = profile?.followers_count || 0;
   const rating = profile?.rating || 0;
+  const isOwnProfile = !username || (user?.id && profile?.id === user.id);
 
   return (
     <div className="relative">
@@ -217,8 +258,22 @@ const ProfileView = ({ role }) => {
             </div>
           </div>
           <div className="flex gap-2 sm:gap-3 flex-wrap justify-center sm:justify-start mt-3 sm:mt-4">
-            {!username && user && (
+            {isOwnProfile && user && (
               <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/profile/edit')}>Edit Profile</Button>
+            )}
+            {!isOwnProfile && (
+              <>
+                <Button
+                  variant={isFollowing ? 'secondary' : 'primary'}
+                  className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2"
+                  onClick={handleFollow}
+                  disabled={isFollowing}
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Button>
+                <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Message</Button>
+                <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Favorite</Button>
+              </>
             )}
             <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => setShowShareModal(true)}>Share Profile</Button>
           </div>

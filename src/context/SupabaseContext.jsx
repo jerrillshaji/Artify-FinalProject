@@ -206,6 +206,7 @@ export function SupabaseProvider({ children }) {
     loading,
     signUp,
     signIn,
+    resendConfirmation,
     signInWithProvider,
     signOut,
     resetPassword,
