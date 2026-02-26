@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Star, Camera, Play } from 'lucide-react';
+import { Check, Star, Camera, Play, X } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+import { FaInstagram, FaFacebook, FaWhatsapp, FaCopy } from 'react-icons/fa';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
@@ -11,6 +12,7 @@ const ProfileView = ({ role }) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileNotFound, setProfileNotFound] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -119,6 +121,31 @@ const ProfileView = ({ role }) => {
     fetchProfile();
   }, [user, supabase, username, role]);
 
+  const handleShare = (platform) => {
+    const profileUrl = `${window.location.origin}/${profile?.username || profile?.id}`;
+    const shareText = `Check out my profile on Artify: ${realName}`;
+    
+    switch(platform) {
+      case 'instagram':
+        window.open(`https://www.instagram.com`, '_blank');
+        alert('Share this profile: ' + profileUrl);
+        break;
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + '\n' + profileUrl)}`, '_blank');
+        break;
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}`, '_blank');
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(profileUrl);
+        alert('Profile link copied to clipboard!');
+        break;
+      default:
+        break;
+    }
+    setShowShareModal(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -188,7 +215,7 @@ const ProfileView = ({ role }) => {
           </div>
           <div className="flex gap-2 sm:gap-3 flex-wrap justify-center sm:justify-start mt-3 sm:mt-4">
             <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Edit Profile</Button>
-            <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Share Profile</Button>
+            <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => setShowShareModal(true)}>Share Profile</Button>
           </div>
         </div>
       </div>
@@ -251,6 +278,64 @@ const ProfileView = ({ role }) => {
           )}
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-3xl border border-white/10 w-full max-w-md p-8 relative shadow-2xl">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-all duration-300"
+            >
+              <X size={24} className="text-white" />
+            </button>
+
+            {/* Modal Header */}
+            <h2 className="text-2xl font-bold text-white mb-2">Share Profile</h2>
+            <p className="text-gray-400 text-sm mb-8">Choose a platform to share</p>
+
+            {/* Share Options Grid */}
+            <div className="grid grid-cols-2 gap-4 sm:gap-6">
+              {/* Instagram */}
+              <button
+                onClick={() => handleShare('instagram')}
+                className="flex flex-col items-center justify-center p-6 sm:p-8 bg-white/5 hover:bg-gradient-to-br hover:from-pink-500/20 hover:to-purple-500/20 border border-white/10 hover:border-pink-500/30 rounded-2xl transition-all duration-300 group"
+              >
+                <FaInstagram size={40} className="text-white group-hover:text-pink-400 mb-3 transition-colors duration-300" />
+                <span className="text-sm font-semibold text-gray-300 group-hover:text-white text-center">Instagram</span>
+              </button>
+
+              {/* WhatsApp */}
+              <button
+                onClick={() => handleShare('whatsapp')}
+                className="flex flex-col items-center justify-center p-6 sm:p-8 bg-white/5 hover:bg-gradient-to-br hover:from-green-500/20 hover:to-emerald-500/20 border border-white/10 hover:border-green-500/30 rounded-2xl transition-all duration-300 group"
+              >
+                <FaWhatsapp size={40} className="text-white group-hover:text-green-400 mb-3 transition-colors duration-300" />
+                <span className="text-sm font-semibold text-gray-300 group-hover:text-white text-center">WhatsApp</span>
+              </button>
+
+              {/* Facebook */}
+              <button
+                onClick={() => handleShare('facebook')}
+                className="flex flex-col items-center justify-center p-6 sm:p-8 bg-white/5 hover:bg-gradient-to-br hover:from-blue-500/20 hover:to-cyan-500/20 border border-white/10 hover:border-blue-500/30 rounded-2xl transition-all duration-300 group"
+              >
+                <FaFacebook size={40} className="text-white group-hover:text-blue-400 mb-3 transition-colors duration-300" />
+                <span className="text-sm font-semibold text-gray-300 group-hover:text-white text-center">Facebook</span>
+              </button>
+
+              {/* Copy Link */}
+              <button
+                onClick={() => handleShare('copy')}
+                className="flex flex-col items-center justify-center p-6 sm:p-8 bg-white/5 hover:bg-gradient-to-br hover:from-fuchsia-500/20 hover:to-purple-500/20 border border-white/10 hover:border-fuchsia-500/30 rounded-2xl transition-all duration-300 group"
+              >
+                <FaCopy size={40} className="text-white group-hover:text-fuchsia-400 mb-3 transition-colors duration-300" />
+                <span className="text-sm font-semibold text-gray-300 group-hover:text-white text-center">Copy Link</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
