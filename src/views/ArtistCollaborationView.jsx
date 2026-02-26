@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Zap, MapPin, ArrowUpRight } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -6,6 +7,7 @@ import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
 
 const ArtistCollaborationView = () => {
+  const navigate = useNavigate();
   const { supabase, user } = useSupabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
@@ -13,6 +15,14 @@ const ArtistCollaborationView = () => {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [collaborations, setCollaborations] = useState([]);
+
+  const getProfilePath = (profile) => {
+    const normalizedUsername = profile?.username?.toLowerCase()?.trim();
+    if (normalizedUsername && /^[a-z0-9_]{3,}$/.test(normalizedUsername)) {
+      return `/${normalizedUsername}`;
+    }
+    return `/profile?id=${profile.id}`;
+  };
 
   // Load collaborations
   useEffect(() => {
@@ -23,6 +33,7 @@ const ArtistCollaborationView = () => {
           *,
           creator:profiles!collaborations_creator_id_fkey (
             id,
+            username,
             full_name,
             avatar_url
           )
@@ -210,6 +221,7 @@ const ArtistCollaborationView = () => {
           {results.map((profile) => (
             <div
               key={profile.id}
+              onClick={() => navigate(getProfilePath(profile))}
               className="bg-white/5 backdrop-blur-xl border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-white/20 hover:bg-white/10 transition-all group cursor-pointer relative overflow-hidden"
             >
               <div className="flex items-center gap-3 mb-4">
@@ -244,6 +256,7 @@ const ArtistCollaborationView = () => {
           {collaborations.map((collab) => (
             <div
               key={collab.id}
+              onClick={() => navigate(getProfilePath(collab.creator || { id: collab.creator_id }))}
               className="bg-white/5 backdrop-blur-xl border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-white/20 hover:bg-white/10 transition-all group cursor-pointer relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-2 sm:p-3">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Star, Camera, Play, X } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { FaInstagram, FaFacebook, FaWhatsapp, FaCopy } from 'react-icons/fa';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
@@ -9,6 +9,8 @@ import { useSupabase } from '../context/SupabaseContext';
 const ProfileView = ({ role }) => {
   const { supabase, user } = useSupabase();
   const { username } = useParams();
+  const [searchParams] = useSearchParams();
+  const profileIdParam = searchParams.get('id');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileNotFound, setProfileNotFound] = useState(false);
@@ -19,7 +21,7 @@ const ProfileView = ({ role }) => {
       setLoading(true);
       setProfileNotFound(false);
 
-      if (!username && !user) {
+      if (!username && !profileIdParam && !user) {
         setLoading(false);
         setProfileNotFound(true);
         return;
@@ -41,7 +43,9 @@ const ProfileView = ({ role }) => {
 
         const { data: profileData, error: profileError } = username
           ? await profileQuery.eq('username', username.toLowerCase()).maybeSingle()
-          : await profileQuery.eq('id', user.id).maybeSingle();
+          : profileIdParam
+            ? await profileQuery.eq('id', profileIdParam).maybeSingle()
+            : await profileQuery.eq('id', user.id).maybeSingle();
 
         let resolvedProfile = profileData;
 
@@ -49,7 +53,7 @@ const ProfileView = ({ role }) => {
           throw profileError;
         }
 
-        if (!resolvedProfile && !username && user?.id) {
+        if (!resolvedProfile && !username && !profileIdParam && user?.id) {
           const profilePayload = {
             id: user.id,
             email: user.email,
@@ -101,7 +105,7 @@ const ProfileView = ({ role }) => {
         setProfile({ ...resolvedProfile, ...artistData });
       } catch (error) {
         console.error('Error fetching profile:', error);
-        if (!username && user) {
+        if (!username && !profileIdParam && user) {
           setProfile({
             id: user.id,
             email: user.email,
@@ -119,7 +123,7 @@ const ProfileView = ({ role }) => {
     };
 
     fetchProfile();
-  }, [user, supabase, username, role]);
+  }, [user, supabase, username, profileIdParam, role]);
 
   const handleShare = (platform) => {
     const profileUrl = `${window.location.origin}/${profile?.username || profile?.id}`;
