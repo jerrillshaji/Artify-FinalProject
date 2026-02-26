@@ -103,18 +103,17 @@ export function SupabaseProvider({ children }) {
         throw new Error('User creation failed');
       }
       
-      // Check if email confirmation is required
-      // If email_confirmed_at is null, email was sent and waiting for confirmation
-      const emailSent = !data.user.email_confirmed_at;
+      const emailConfirmed = Boolean(data.user.email_confirmed_at || data.user.confirmed_at);
+      const emailSent = !emailConfirmed;
       
       console.log('Sign up successful:', {
         userId: data.user.id,
         email: data.user.email,
-        emailSent: emailSent,
-        emailConfirmed: data.user.email_confirmed_at !== null,
+        emailSent,
+        emailConfirmed,
       });
       
-      return { data, error: null, emailSent };
+      return { data, error: null, emailSent, emailConfirmed };
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;

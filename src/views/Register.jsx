@@ -165,7 +165,7 @@ const Register = () => {
     }
 
     try {
-      const { data, error: signUpError } = await signUp(formData.email, formData.password, {
+      const { data, error: signUpError, emailConfirmed } = await signUp(formData.email, formData.password, {
         full_name: formData.fullName,
         role,
         username: username.toLowerCase().replace(/[^a-z0-9_]/g, '_'),
@@ -178,15 +178,16 @@ const Register = () => {
         throw new Error('Failed to create account. Please try again.');
       }
       
-      // Check if email confirmation is required
-      if (data.user && !data.user.email_confirmed_at) {
+      // Require link-based email confirmation flow
+      if (!emailConfirmed) {
         // Email was sent successfully - show confirmation modal
         setShowConfirmationModal(true);
         return;
       }
       
-      // Email not required or already confirmed
-      navigate('/feed');
+      // If this is reached, Supabase is auto-confirming emails (server config issue)
+      setError('Your Supabase project is auto-confirming emails. In Supabase Dashboard go to Authentication > Providers > Email and turn ON "Confirm email" to enforce link-based verification.');
+      setShowConfirmationModal(true);
     } catch (err) {
       console.error('Registration error:', err);
       setError(err.message || 'Failed to create account. Please check your details and try again.');
