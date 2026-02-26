@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Star, Camera, Play, X } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { FaInstagram, FaFacebook, FaWhatsapp, FaCopy } from 'react-icons/fa';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
@@ -9,6 +9,7 @@ import { useSupabase } from '../context/SupabaseContext';
 const ProfileView = ({ role }) => {
   const { supabase, user } = useSupabase();
   const { username } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileNotFound, setProfileNotFound] = useState(false);
@@ -214,7 +215,9 @@ const ProfileView = ({ role }) => {
             </div>
           </div>
           <div className="flex gap-2 sm:gap-3 flex-wrap justify-center sm:justify-start mt-3 sm:mt-4">
-            <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Edit Profile</Button>
+            {!username && user && (
+              <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/profile/edit')}>Edit Profile</Button>
+            )}
             <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => setShowShareModal(true)}>Share Profile</Button>
           </div>
         </div>
@@ -223,9 +226,6 @@ const ProfileView = ({ role }) => {
         <div className="md:col-span-1 space-y-4 sm:space-y-6">
           <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/5">
             <h3 className="text-gray-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-3 sm:mb-4">About</h3>
-            <p className="text-white font-semibold text-sm sm:text-base mb-2">
-              Real name: {realName}
-            </p>
             <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
               {bio}
             </p>

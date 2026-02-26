@@ -10,6 +10,7 @@ import ArtistDashboard from '../../views/ArtistDashboard';
 import ManagerDashboard from '../../views/ManagerDashboard';
 import MessagesView from '../../views/MessagesView';
 import ProfileView from '../../views/ProfileView';
+import EditProfileView from '../../views/EditProfileView';
 
 const SettingsPlaceholder = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -45,6 +46,7 @@ const MainLayout = ({ user, role, onLogout }) => {
               <Route path="/discover" element={role === 'manager' ? <ManagerDiscovery /> : <ArtistCollaborationView />} />
               <Route path="/dashboard" element={role === 'artist' ? <ArtistDashboard /> : <ManagerDashboard />} />
               <Route path="/messages" element={<MessagesView />} />
+              <Route path="/profile/edit" element={<EditProfileView />} />
               <Route path="/profile" element={<ProfileView role={role} />} />
               <Route path="/:username" element={<ProfileView role={role} />} />
               <Route path="/settings" element={<SettingsPlaceholder />} />
