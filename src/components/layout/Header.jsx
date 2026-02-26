@@ -1,15 +1,46 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, BellRing, MessageCircle, User, LogOut } from 'lucide-react';
 import { MOCK_ARTISTS } from '../../data/mockData';
+import { useSupabase } from '../../context/SupabaseContext';
 
 const Header = ({ user, role, onLogout }) => {
   const navigate = useNavigate();
+  const { supabase } = useSupabase();
+  const [resolvedUsername, setResolvedUsername] = useState(null);
 
   // Safe access to user data
   const userName = user?.user_metadata?.full_name || (role === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.');
+  const metadataUsername = user?.user_metadata?.username;
   const userRole = role === 'artist' ? 'Artist' : 'Organizer';
   const userImage = role === 'artist' ? MOCK_ARTISTS[0]?.image : "https://i.pravatar.cc/150?img=60";
+  const usernameToUse = (resolvedUsername || metadataUsername || '').toLowerCase().trim();
+  const isValidUsername = /^[a-z0-9_]{3,}$/.test(usernameToUse);
+  const profilePath = isValidUsername ? `/${usernameToUse}` : '/profile';
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      if (!user?.id) {
+        setResolvedUsername(null);
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        setResolvedUsername(data?.username || null);
+      } catch (error) {
+        console.error('Error loading profile username:', error);
+        setResolvedUsername(null);
+      }
+    };
+
+    fetchUsername();
+  }, [supabase, user?.id]);
 
   return (
     <header className="fixed top-0 w-full bg-[#050505]/80 backdrop-blur-xl border-b border-white/5 z-50 px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
@@ -52,7 +83,7 @@ const Header = ({ user, role, onLogout }) => {
             {/* Dropdown menu */}
             <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
               <button
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate(profilePath)}
                 className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-3"
               >
                 <User size={16} />

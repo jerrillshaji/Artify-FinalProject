@@ -1,49 +1,123 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Star, Camera, Play } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
 
 const ProfileView = ({ role }) => {
   const { supabase, user } = useSupabase();
+  const { username } = useParams();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileNotFound, setProfileNotFound] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) return;
+      setLoading(true);
+      setProfileNotFound(false);
+
+      if (!username && !user) {
+        setLoading(false);
+        setProfileNotFound(true);
+        return;
+      }
 
       try {
-        // Fetch profile data
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        const fallbackRole = user?.user_metadata?.role || role || 'artist';
+        const fallbackName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'New User';
+        const fallbackUsername = (user?.user_metadata?.username || user?.email?.split('@')[0] || `user_${user?.id?.slice(0, 8) || 'new'}`)
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/^_+|_+$/g, '') || `user_${user?.id?.slice(0, 8) || 'new'}`;
 
-        if (profileError) throw profileError;
+        // Fetch profile data
+        const profileQuery = supabase
+          .from('profiles')
+          .select('*');
+
+        const { data: profileData, error: profileError } = username
+          ? await profileQuery.eq('username', username.toLowerCase()).maybeSingle()
+          : await profileQuery.eq('id', user.id).maybeSingle();
+
+        let resolvedProfile = profileData;
+
+        if (profileError) {
+          throw profileError;
+        }
+
+        if (!resolvedProfile && !username && user?.id) {
+          const profilePayload = {
+            id: user.id,
+            email: user.email,
+            full_name: fallbackName,
+            role: fallbackRole,
+            username: fallbackUsername,
+          };
+
+          await supabase
+            .from('profiles')
+            .upsert(profilePayload, { onConflict: 'id' });
+
+          if (fallbackRole === 'artist') {
+            await supabase
+              .from('artists')
+              .upsert({ id: user.id, stage_name: fallbackName }, { onConflict: 'id' });
+          } else {
+            await supabase
+              .from('managers')
+              .upsert({ id: user.id, company_name: fallbackName }, { onConflict: 'id' });
+          }
+
+          const { data: repairedProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          resolvedProfile = repairedProfile || profilePayload;
+        }
+
+        if (!resolvedProfile) {
+          setProfileNotFound(true);
+          setProfile(null);
+          return;
+        }
 
         // Fetch artist data if user is an artist
         let artistData = null;
-        if (profileData?.role === 'artist') {
+        if (resolvedProfile?.role === 'artist') {
           const { data: artistDataResult } = await supabase
             .from('artists')
             .select('*')
-            .eq('id', user.id)
-            .single();
+            .eq('id', resolvedProfile.id)
+            .maybeSingle();
           artistData = artistDataResult;
         }
 
-        setProfile({ ...profileData, ...artistData });
+        setProfile({ ...resolvedProfile, ...artistData });
       } catch (error) {
         console.error('Error fetching profile:', error);
+        if (!username && user) {
+          setProfile({
+            id: user.id,
+            email: user.email,
+            full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'New User',
+            role: user?.user_metadata?.role || role || 'artist',
+            username: (user?.user_metadata?.username || user?.email?.split('@')[0] || `user_${user?.id?.slice(0, 8) || 'new'}`).toLowerCase(),
+          });
+          setProfileNotFound(false);
+        } else {
+          setProfileNotFound(true);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, [user, supabase]);
+  }, [user, supabase, username, role]);
 
   if (loading) {
     return (
@@ -56,9 +130,22 @@ const ProfileView = ({ role }) => {
     );
   }
 
+  if (profileNotFound) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-2">Profile not found</h2>
+          <p className="text-gray-400">This profile link is invalid or no longer available.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Use profile data or fallback to user metadata
-  const displayName = profile?.full_name || user?.user_metadata?.full_name || (role === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.');
-  const avatarUrl = profile?.avatar_url || (role === 'artist' ? profile?.portfolio_images?.[0] : null);
+  const profileRole = profile?.role || role || 'artist';
+  const realName = profile?.full_name || user?.user_metadata?.full_name || 'Name not set';
+  const displayName = profile?.username ? `@${profile.username}` : (realName || (profileRole === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.'));
+  const avatarUrl = profile?.avatar_url || (profileRole === 'artist' ? profile?.portfolio_images?.[0] : null);
   const bio = profile?.bio || 'No bio added yet.';
   const location = profile?.location || 'Location not set';
   const isVerified = profile?.is_verified || false;
@@ -78,7 +165,7 @@ const ProfileView = ({ role }) => {
             <div className="relative flex-shrink-0">
               <div className="w-16 h-16 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full p-0.5 sm:p-1 bg-gradient-to-br from-fuchsia-500 to-cyan-500">
                 <img 
-                  src={avatarUrl || `https://i.pravatar.cc/150?img=${role === 'artist' ? '1' : '60'}`} 
+                  src={avatarUrl || `https://i.pravatar.cc/150?img=${profileRole === 'artist' ? '1' : '60'}`} 
                   className="w-full h-full rounded-full object-cover border-2 sm:border-4 border-[#050505]" 
                   alt={displayName}
                 />
@@ -109,6 +196,9 @@ const ProfileView = ({ role }) => {
         <div className="md:col-span-1 space-y-4 sm:space-y-6">
           <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/5">
             <h3 className="text-gray-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-3 sm:mb-4">About</h3>
+            <p className="text-white font-semibold text-sm sm:text-base mb-2">
+              Real name: {realName}
+            </p>
             <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
               {bio}
             </p>
