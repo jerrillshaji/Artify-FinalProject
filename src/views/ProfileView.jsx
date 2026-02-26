@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Star, Camera, Play, X } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { FaInstagram, FaFacebook, FaWhatsapp, FaCopy } from 'react-icons/fa';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
@@ -9,6 +9,7 @@ import { useSupabase } from '../context/SupabaseContext';
 const ProfileView = ({ role }) => {
   const { supabase, user } = useSupabase();
   const { username } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileNotFound, setProfileNotFound] = useState(false);
