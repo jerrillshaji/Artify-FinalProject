@@ -46,6 +46,7 @@ const MainLayout = ({ user, role, onLogout }) => {
               <Route path="/dashboard" element={role === 'artist' ? <ArtistDashboard /> : <ManagerDashboard />} />
               <Route path="/messages" element={<MessagesView />} />
               <Route path="/profile" element={<ProfileView role={role} />} />
+              <Route path="/:username" element={<ProfileView role={role} />} />
               <Route path="/settings" element={<SettingsPlaceholder />} />
               <Route path="*" element={<Navigate to="/feed" replace />} />
             </Routes>

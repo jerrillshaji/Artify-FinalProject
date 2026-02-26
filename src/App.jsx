@@ -8,6 +8,7 @@ import LandingPage from './views/LandingPage';
 import Login from './views/Login';
 import Register from './views/Register';
 import AuthCallback from './views/AuthCallback';
+import ProfileView from './views/ProfileView';
 
 function AppContent() {
   const { user, signOut, loading } = useAuth();
@@ -35,6 +36,7 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/:username" element={<ProfileView />} />
         <Route path="*" element={<LandingPage />} />
       </Routes>
     );
