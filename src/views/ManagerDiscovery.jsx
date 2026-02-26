@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Star, Check, ChevronRight, MapPin, Music, Briefcase } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -6,6 +7,7 @@ import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
 
 const ManagerDiscovery = () => {
+  const navigate = useNavigate();
   const { supabase, user } = useSupabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
@@ -15,6 +17,14 @@ const ManagerDiscovery = () => {
   const [hasSearched, setHasSearched] = useState(false);
 
   const genres = ['Electronic', 'Jazz', 'Rock', 'Pop', 'Classical', 'Hip-Hop', 'R&B', 'Country'];
+
+  const getProfilePath = (profile) => {
+    const normalizedUsername = profile?.username?.toLowerCase()?.trim();
+    if (normalizedUsername && /^[a-z0-9_]{3,}$/.test(normalizedUsername)) {
+      return `/${normalizedUsername}`;
+    }
+    return `/profile?id=${profile.id}`;
+  };
 
   const performSearch = async () => {
     if (!searchQuery.trim() && !selectedGenre) {
@@ -208,6 +218,7 @@ const ManagerDiscovery = () => {
           {results.map((profile) => (
             <div
               key={profile.id}
+              onClick={() => navigate(getProfilePath(profile))}
               className="group relative bg-[#121216] rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden border border-white/5 hover:border-white/20 transition-all duration-500 hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]"
             >
               <div className="relative h-64 sm:h-72 md:h-80 overflow-hidden">
