@@ -35,6 +35,9 @@ const ProfileView = ({ role }) => {
           .replace(/[^a-z0-9_]/g, '_')
           .replace(/_+/g, '_')
           .replace(/^_+|_+$/g, '') || `user_${user?.id?.slice(0, 8) || 'new'}`;
+        const normalizedUsername = username ? username.toLowerCase() : '';
+        const metadataUsername = user?.user_metadata?.username?.toLowerCase() || '';
+        const isOwnUsername = Boolean(user?.id && normalizedUsername && (normalizedUsername === metadataUsername || normalizedUsername === fallbackUsername));
 
         // Fetch profile data
         const profileQuery = supabase
@@ -42,7 +45,7 @@ const ProfileView = ({ role }) => {
           .select('*');
 
         const { data: profileData, error: profileError } = username
-          ? await profileQuery.eq('username', username.toLowerCase()).maybeSingle()
+          ? await profileQuery.eq('username', normalizedUsername).maybeSingle()
           : await profileQuery.eq('id', user.id).maybeSingle();
 
         let resolvedProfile = profileData;
@@ -51,7 +54,16 @@ const ProfileView = ({ role }) => {
           throw profileError;
         }
 
-        if (!resolvedProfile && !username && user?.id) {
+        if (!resolvedProfile && username && isOwnUsername) {
+          const { data: fallbackProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
+          resolvedProfile = fallbackProfile;
+        }
+
+        if (!resolvedProfile && user?.id && (!username || isOwnUsername)) {
           const profilePayload = {
             id: user.id,
             email: user.email,

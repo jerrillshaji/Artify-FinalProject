@@ -184,10 +184,10 @@ const Register = () => {
         setShowConfirmationModal(true);
         return;
       }
-      
-      // If this is reached, Supabase is auto-confirming emails (server config issue)
-      setError('Your Supabase project is auto-confirming emails. In Supabase Dashboard go to Authentication > Providers > Email and turn ON "Confirm email" to enforce link-based verification.');
-      setShowConfirmationModal(true);
+
+      // Email confirmation is disabled; proceed directly
+      navigate('/feed');
+      return;
     } catch (err) {
       console.error('Registration error:', err);
       setError(err.message || 'Failed to create account. Please check your details and try again.');
