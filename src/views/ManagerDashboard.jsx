@@ -1,10 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Zap, DollarSign, Calendar, Users, Clock, MoreHorizontal, Paperclip } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { MOCK_MANAGER_STATS } from '../data/mockData';
 import BackButton from '../components/layout/BackButton';
 
-const ManagerDashboard = () => (
+const ManagerDashboard = () => {
+  const navigate = useNavigate();
+
+  return (
   <div className="space-y-4 sm:space-y-6 md:space-y-8 pb-12">
     <div className="flex items-center mb-4 sm:mb-6">
       <BackButton />
@@ -80,7 +84,10 @@ const ManagerDashboard = () => (
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0"><DollarSign size={14} sm={16}/></div>
               <span className="text-xs sm:text-sm font-medium text-gray-200">Process Payments</span>
             </button>
-            <button className="w-full text-left p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-2 sm:gap-3 transition-colors group">
+            <button
+              onClick={() => navigate('/discover')}
+              className="w-full text-left p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-2 sm:gap-3 transition-colors group"
+            >
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0"><Users size={14} sm={16}/></div>
               <span className="text-xs sm:text-sm font-medium text-gray-200">Scout Talent</span>
             </button>
@@ -93,6 +100,7 @@ const ManagerDashboard = () => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default ManagerDashboard;

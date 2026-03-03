@@ -19,11 +19,10 @@ const ManagerDiscovery = () => {
   const genres = ['Electronic', 'Jazz', 'Rock', 'Pop', 'Classical', 'Hip-Hop', 'R&B', 'Country'];
 
   const getProfilePath = (profile) => {
-    const normalizedUsername = profile?.username?.toLowerCase()?.trim();
-    if (normalizedUsername && /^[a-z0-9_]{3,}$/.test(normalizedUsername)) {
-      return `/${normalizedUsername}`;
+    if (profile?.id) {
+      return `/profile?id=${profile.id}`;
     }
-    return `/profile?id=${profile.id}`;
+    return '/profile';
   };
 
   const performSearch = async () => {

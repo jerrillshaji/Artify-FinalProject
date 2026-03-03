@@ -17,11 +17,10 @@ const ArtistCollaborationView = () => {
   const [collaborations, setCollaborations] = useState([]);
 
   const getProfilePath = (profile) => {
-    const normalizedUsername = profile?.username?.toLowerCase()?.trim();
-    if (normalizedUsername && /^[a-z0-9_]{3,}$/.test(normalizedUsername)) {
-      return `/${normalizedUsername}`;
+    if (profile?.id) {
+      return `/profile?id=${profile.id}`;
     }
-    return `/profile?id=${profile.id}`;
+    return '/profile';
   };
 
   // Load collaborations

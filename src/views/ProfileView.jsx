@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Star, Camera, Play, X } from 'lucide-react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaInstagram, FaFacebook, FaWhatsapp, FaCopy } from 'react-icons/fa';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
@@ -9,7 +9,9 @@ import { useSupabase } from '../context/SupabaseContext';
 const ProfileView = ({ role }) => {
   const { supabase, user } = useSupabase();
   const { username } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const profileIdParam = searchParams.get('id');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileNotFound, setProfileNotFound] = useState(false);
@@ -28,7 +30,7 @@ const ProfileView = ({ role }) => {
       setLoading(true);
       setProfileNotFound(false);
 
-      if (!username && !user) {
+      if (!username && !profileIdParam && !user) {
         setLoading(false);
         setProfileNotFound(true);
         return;
@@ -45,6 +47,8 @@ const ProfileView = ({ role }) => {
         const normalizedUsername = username ? username.toLowerCase() : '';
         const metadataUsername = user?.user_metadata?.username?.toLowerCase() || '';
         const isOwnUsername = Boolean(user?.id && normalizedUsername && (normalizedUsername === metadataUsername || normalizedUsername === fallbackUsername));
+        const isOwnProfileId = Boolean(user?.id && profileIdParam && profileIdParam === user.id);
+        const isOwnProfileTarget = Boolean(user?.id && (isOwnUsername || isOwnProfileId || (!username && !profileIdParam)));
 
         // Fetch profile data
         const profileQuery = supabase
@@ -53,6 +57,8 @@ const ProfileView = ({ role }) => {
 
         const { data: profileData, error: profileError } = username
           ? await profileQuery.eq('username', normalizedUsername).maybeSingle()
+          : profileIdParam
+            ? await profileQuery.eq('id', profileIdParam).maybeSingle()
           : await profileQuery.eq('id', user.id).maybeSingle();
 
         let resolvedProfile = profileData;
@@ -70,7 +76,7 @@ const ProfileView = ({ role }) => {
           resolvedProfile = fallbackProfile;
         }
 
-        if (!resolvedProfile && user?.id && (!username || isOwnUsername)) {
+        if (!resolvedProfile && isOwnProfileTarget) {
           const profilePayload = {
             id: user.id,
             email: user.email,
@@ -122,7 +128,7 @@ const ProfileView = ({ role }) => {
         setProfile({ ...resolvedProfile, ...artistData });
       } catch (error) {
         console.error('Error fetching profile:', error);
-          if (!username && user) {
+          if (!username && !profileIdParam && user) {
           setProfile({
             id: user.id,
             email: user.email,
@@ -140,7 +146,7 @@ const ProfileView = ({ role }) => {
     };
 
     fetchProfile();
-  }, [user, supabase, username, role]);
+  }, [user, supabase, username, profileIdParam, role]);
 
   useEffect(() => {
     const fetchFollowState = async () => {
@@ -253,11 +259,10 @@ const ProfileView = ({ role }) => {
   };
 
   const getProfilePath = (targetProfile) => {
-    const normalizedUsername = targetProfile?.username?.toLowerCase()?.trim();
-    if (normalizedUsername && /^[a-z0-9_]{3,}$/.test(normalizedUsername)) {
-      return `/${normalizedUsername}`;
+    if (targetProfile?.id) {
+      return `/profile?id=${targetProfile.id}`;
     }
-    return `/profile?id=${targetProfile?.id}`;
+    return '/profile';
   };
 
   const handleOpenUserFromConnections = (targetProfile) => {
@@ -385,7 +390,7 @@ const ProfileView = ({ role }) => {
   const followers = profile?.followers_count || 0;
   const following = followingCount || 0;
   const rating = profile?.rating || 0;
-  const isOwnProfile = !username || (user?.id && profile?.id === user.id);
+  const isOwnProfile = Boolean(user?.id && profile?.id === user.id);
 
   return (
     <div className="relative">
