@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Check, Star, Camera, Play, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Check, Star, Camera, Play, X, ImagePlus, Eye } from 'lucide-react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaInstagram, FaFacebook, FaWhatsapp, FaCopy } from 'react-icons/fa';
 import Button from '../components/ui/Button';
@@ -24,6 +24,10 @@ const ProfileView = ({ role }) => {
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
   const [followingCount, setFollowingCount] = useState(0);
+  const [showBackgroundActions, setShowBackgroundActions] = useState(false);
+  const [showBackgroundPreview, setShowBackgroundPreview] = useState(false);
+  const [backgroundUploading, setBackgroundUploading] = useState(false);
+  const backgroundFileInputRef = useRef(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -357,6 +361,73 @@ const ProfileView = ({ role }) => {
     setShowShareModal(false);
   };
 
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Failed to read image file'));
+    reader.readAsDataURL(file);
+  });
+
+  const handleOpenBackgroundActions = () => {
+    setShowBackgroundActions(true);
+  };
+
+  const handleBackgroundLayerClick = (event) => {
+    const interactiveElement = event.target.closest('button, a, input, textarea, select, label');
+    if (interactiveElement) {
+      return;
+    }
+    handleOpenBackgroundActions();
+  };
+
+  const handleShowBackground = () => {
+    setShowBackgroundActions(false);
+    setShowBackgroundPreview(true);
+  };
+
+  const handleChangeBackground = () => {
+    setShowBackgroundActions(false);
+    backgroundFileInputRef.current?.click();
+  };
+
+  const handleBackgroundFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.id || !profile?.id || user.id !== profile.id) {
+      return;
+    }
+
+    setBackgroundUploading(true);
+    try {
+      const imageDataUrl = await readFileAsDataUrl(file);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          background_url: imageDataUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setProfile((prevProfile) => {
+        if (!prevProfile) return prevProfile;
+        return {
+          ...prevProfile,
+          background_url: imageDataUrl,
+        };
+      });
+    } catch (error) {
+      console.error('Error updating background image:', error);
+      alert(error.message || 'Failed to update background image');
+    } finally {
+      event.target.value = '';
+      setBackgroundUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -391,16 +462,36 @@ const ProfileView = ({ role }) => {
   const following = followingCount || 0;
   const rating = profile?.rating || 0;
   const isOwnProfile = Boolean(user?.id && profile?.id === user.id);
+  const defaultBackgroundUrl = 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80';
+  const backgroundUrl = profile?.background_url || defaultBackgroundUrl;
 
   return (
     <div className="relative">
       <div className="flex items-center mb-4 sm:mb-6">
         <BackButton />
       </div>
+      <input
+        ref={backgroundFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleBackgroundFileChange}
+      />
       <div className="h-48 sm:h-56 md:h-64 lg:h-80 rounded-[1.5rem] sm:rounded-[2rem] md:rounded-[2.5rem] relative overflow-hidden mb-16 sm:mb-20 md:mb-24">
-        <img src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent"></div>
-        <div className="absolute bottom-0 left-0 w-full p-3 sm:p-4 md:p-6 lg:p-8 flex flex-col justify-end h-full">
+        <img
+          src={backgroundUrl}
+          className="w-full h-full object-cover"
+          alt="Profile background"
+        />
+        <button
+          type="button"
+          aria-label="Open background picture options"
+          className="absolute inset-0 z-[1]"
+          onClick={handleOpenBackgroundActions}
+          disabled={backgroundUploading}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-full p-3 sm:p-4 md:p-6 lg:p-8 z-[2]" onClick={handleBackgroundLayerClick}>
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-4 md:gap-6 w-full">
             <div className="relative flex-shrink-0">
               <div className="w-16 h-16 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full p-0.5 sm:p-1 bg-gradient-to-br from-fuchsia-500 to-cyan-500">
@@ -447,6 +538,11 @@ const ProfileView = ({ role }) => {
             <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => setShowShareModal(true)}>Share Profile</Button>
           </div>
         </div>
+        {backgroundUploading && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
         <div className="md:col-span-1 space-y-4 sm:space-y-6">
@@ -530,6 +626,61 @@ const ProfileView = ({ role }) => {
           )}
         </div>
       </div>
+
+      {showBackgroundActions && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowBackgroundActions(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-[#111111] border border-white/10 rounded-2xl p-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-white font-bold text-base mb-3">Background Picture</h3>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleShowBackground}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
+              >
+                <Eye size={16} />
+                <span>Show background picture</span>
+              </button>
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={handleChangeBackground}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
+                >
+                  <ImagePlus size={16} />
+                  <span>Change background picture</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBackgroundPreview && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowBackgroundPreview(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setShowBackgroundPreview(false)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <X size={20} className="text-white" />
+          </button>
+          <img
+            src={backgroundUrl}
+            alt="Background preview"
+            className="max-w-full max-h-full object-contain rounded-2xl"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Share Modal */}
       {showConnectionsModal && (

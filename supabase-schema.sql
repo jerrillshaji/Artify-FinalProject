@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   username TEXT UNIQUE NOT NULL,
   full_name TEXT,
   avatar_url TEXT,
+  background_url TEXT,
   role TEXT CHECK (role IN ('artist', 'manager')) NOT NULL,
   bio TEXT,
   location TEXT,
@@ -187,6 +188,40 @@ ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.collaborations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.follows ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+
+DROP POLICY IF EXISTS "Artists are viewable by everyone" ON public.artists;
+DROP POLICY IF EXISTS "Artists can insert own profile" ON public.artists;
+DROP POLICY IF EXISTS "Artists can update own profile" ON public.artists;
+
+DROP POLICY IF EXISTS "Managers are viewable by everyone" ON public.managers;
+DROP POLICY IF EXISTS "Managers can insert own profile" ON public.managers;
+DROP POLICY IF EXISTS "Managers can update own profile" ON public.managers;
+
+DROP POLICY IF EXISTS "Published events are viewable by everyone" ON public.events;
+DROP POLICY IF EXISTS "Managers can insert own events" ON public.events;
+DROP POLICY IF EXISTS "Managers can update own events" ON public.events;
+DROP POLICY IF EXISTS "Managers can delete own events" ON public.events;
+
+DROP POLICY IF EXISTS "Users can view own bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Artists can insert bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Artists can update own bookings" ON public.bookings;
+DROP POLICY IF EXISTS "Organizers can update own bookings" ON public.bookings;
+
+DROP POLICY IF EXISTS "Collaborations are viewable by everyone" ON public.collaborations;
+DROP POLICY IF EXISTS "Users can create collaborations" ON public.collaborations;
+DROP POLICY IF EXISTS "Users can update own collaborations" ON public.collaborations;
+DROP POLICY IF EXISTS "Users can delete own collaborations" ON public.collaborations;
+
+DROP POLICY IF EXISTS "Users can view own messages" ON public.messages;
+DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
+
+DROP POLICY IF EXISTS "Follows are viewable by everyone" ON public.follows;
+DROP POLICY IF EXISTS "Users can follow from own profile" ON public.follows;
+DROP POLICY IF EXISTS "Users can unfollow from own profile" ON public.follows;
 
 CREATE POLICY "Public profiles are viewable by everyone"
   ON public.profiles FOR SELECT
