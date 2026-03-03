@@ -221,6 +221,7 @@ DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
 
 DROP POLICY IF EXISTS "Follows are viewable by everyone" ON public.follows;
 DROP POLICY IF EXISTS "Users can follow from own profile" ON public.follows;
+DROP POLICY IF EXISTS "Users can update own follows" ON public.follows;
 DROP POLICY IF EXISTS "Users can unfollow from own profile" ON public.follows;
 
 CREATE POLICY "Public profiles are viewable by everyone"
@@ -322,6 +323,10 @@ CREATE POLICY "Follows are viewable by everyone"
 CREATE POLICY "Users can follow from own profile"
   ON public.follows FOR INSERT
   WITH CHECK (follower_id = auth.uid());
+
+CREATE POLICY "Users can update own follows"
+  ON public.follows FOR UPDATE
+  USING (follower_id = auth.uid());
 
 CREATE POLICY "Users can unfollow from own profile"
   ON public.follows FOR DELETE

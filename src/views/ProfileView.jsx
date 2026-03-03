@@ -60,10 +60,10 @@ const ProfileView = ({ role }) => {
         const isOwnProfileId = Boolean(user?.id && profileIdParam && profileIdParam === user.id);
         const isOwnProfileTarget = Boolean(user?.id && (isOwnUsername || isOwnProfileId || (!username && !profileIdParam)));
 
-        // Fetch profile data
+        // Fetch profile data - select only needed columns
         const profileQuery = supabase
           .from('profiles')
-          .select('*');
+          .select('id, email, username, full_name, avatar_url, background_url, role, bio, location, website, social_links, is_verified, followers_count');
 
         const { data: profileData, error: profileError } = username
           ? await profileQuery.eq('username', normalizedUsername).maybeSingle()
@@ -80,7 +80,7 @@ const ProfileView = ({ role }) => {
         if (!resolvedProfile && username && isOwnUsername) {
           const { data: fallbackProfile } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, email, username, full_name, avatar_url, background_url, role, bio, location, website, social_links, is_verified, followers_count')
             .eq('id', user.id)
             .maybeSingle();
           resolvedProfile = fallbackProfile;
@@ -111,7 +111,7 @@ const ProfileView = ({ role }) => {
 
           const { data: repairedProfile } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, email, username, full_name, avatar_url, background_url, role, bio, location, website, social_links, is_verified, followers_count')
             .eq('id', user.id)
             .maybeSingle();
 
@@ -124,18 +124,47 @@ const ProfileView = ({ role }) => {
           return;
         }
 
-        // Fetch artist data if user is an artist
-        let artistData = null;
-        if (resolvedProfile?.role === 'artist') {
-          const { data: artistDataResult } = await supabase
-            .from('artists')
-            .select('*')
-            .eq('id', resolvedProfile.id)
-            .maybeSingle();
-          artistData = artistDataResult;
-        }
+        // Fetch artist data AND follow state AND connection counts in parallel
+        const profileId = resolvedProfile.id;
+        const [artistResult, followResult, followerCountResult, followingCountResult] = await Promise.all([
+          resolvedProfile?.role === 'artist' 
+            ? supabase
+                .from('artists')
+                .select('stage_name, genres, price_range, base_price, rating, total_gigs, tags, portfolio_images, videos, is_available')
+                .eq('id', profileId)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+          user?.id && user.id !== profileId
+            ? supabase
+                .from('follows')
+                .select('follower_id')
+                .eq('follower_id', user.id)
+                .eq('following_id', profileId)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+          supabase
+            .from('follows')
+            .select('follower_id', { count: 'exact', head: true })
+            .eq('following_id', profileId),
+          supabase
+            .from('follows')
+            .select('following_id', { count: 'exact', head: true })
+            .eq('follower_id', profileId),
+        ]);
+
+        const artistData = artistResult.data || null;
+        const isFollowingUser = Boolean(followResult.data);
+        const followerCount = followerCountResult.count || 0;
+        const followingCount = followingCountResult.count || 0;
 
         setProfile({ ...resolvedProfile, ...artistData });
+        setIsFollowing(isFollowingUser);
+        setFollowingCount(followingCount);
+        
+        // Update profile with follower count if different
+        if (resolvedProfile.followers_count !== followerCount) {
+          setProfile(prev => prev ? { ...prev, followers_count: followerCount } : null);
+        }
       } catch (error) {
         console.error('Error fetching profile:', error);
           if (!username && !profileIdParam && user) {
@@ -157,61 +186,6 @@ const ProfileView = ({ role }) => {
 
     fetchProfile();
   }, [user, supabase, username, profileIdParam, role]);
-
-  useEffect(() => {
-    const fetchFollowState = async () => {
-      if (!user?.id || !profile?.id || user.id === profile.id) {
-        setIsFollowing(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('follows')
-        .select('follower_id')
-        .eq('follower_id', user.id)
-        .eq('following_id', profile.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking follow status:', error);
-        setIsFollowing(false);
-        return;
-      }
-
-      setIsFollowing(Boolean(data));
-    };
-
-    fetchFollowState();
-  }, [supabase, user?.id, profile?.id]);
-
-  useEffect(() => {
-    const fetchConnectionCounts = async () => {
-      if (!profile?.id) return;
-
-      const [{ count: followerCount }, { count: followingTotal }] = await Promise.all([
-        supabase
-          .from('follows')
-          .select('follower_id', { count: 'exact', head: true })
-          .eq('following_id', profile.id),
-        supabase
-          .from('follows')
-          .select('following_id', { count: 'exact', head: true })
-          .eq('follower_id', profile.id),
-      ]);
-
-      setProfile((prevProfile) => {
-        if (!prevProfile) return prevProfile;
-        return {
-          ...prevProfile,
-          followers_count: followerCount ?? prevProfile.followers_count ?? 0,
-        };
-      });
-
-      setFollowingCount(followingTotal ?? 0);
-    };
-
-    fetchConnectionCounts();
-  }, [supabase, profile?.id]);
 
   const mapUsersByIdOrder = (ids, users = []) => {
     const byId = new Map(users.map((item) => [item.id, item]));
@@ -324,6 +298,10 @@ const ProfileView = ({ role }) => {
 
     if (error) {
       console.error('Error toggling follow state:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('User ID:', user.id);
+      console.error('Profile ID:', profile.id);
+      alert(`Follow error: ${error.message || 'Unknown error'}\nCheck console for details.`);
       setIsFollowing(!nextIsFollowing);
       setProfile((prevProfile) => {
         if (!prevProfile) {

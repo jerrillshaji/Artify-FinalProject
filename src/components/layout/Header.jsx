@@ -1,45 +1,48 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, BellRing, MessageCircle, User, LogOut } from 'lucide-react';
-import { MOCK_ARTISTS } from '../../data/mockData';
 import { useSupabase } from '../../context/SupabaseContext';
 
 const Header = ({ user, role, onLogout }) => {
   const navigate = useNavigate();
   const { supabase } = useSupabase();
   const [resolvedUsername, setResolvedUsername] = useState(null);
+  const [userAvatar, setUserAvatar] = useState(null);
 
   // Safe access to user data
   const userName = user?.user_metadata?.full_name || (role === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.');
   const metadataUsername = user?.user_metadata?.username;
   const userRole = role === 'artist' ? 'Artist' : 'Organizer';
-  const userImage = role === 'artist' ? MOCK_ARTISTS[0]?.image : "https://i.pravatar.cc/150?img=60";
+  const userImage = userAvatar || "https://i.pravatar.cc/150?img=60";
   const usernameToUse = (resolvedUsername || metadataUsername || '').toLowerCase().trim();
   const isValidUsername = /^[a-z0-9_]{3,}$/.test(usernameToUse);
   const profilePath = isValidUsername ? `/${usernameToUse}` : '/profile';
 
   useEffect(() => {
-    const fetchUsername = async () => {
+    const fetchUserData = async () => {
       if (!user?.id) {
         setResolvedUsername(null);
+        setUserAvatar(null);
         return;
       }
 
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('username')
+          .select('username, avatar_url')
           .eq('id', user.id)
           .maybeSingle();
 
         setResolvedUsername(data?.username || null);
+        setUserAvatar(data?.avatar_url || null);
       } catch (error) {
-        console.error('Error loading profile username:', error);
+        console.error('Error loading profile data:', error);
         setResolvedUsername(null);
+        setUserAvatar(null);
       }
     };
 
-    fetchUsername();
+    fetchUserData();
   }, [supabase, user?.id]);
 
   return (
@@ -73,10 +76,10 @@ const Header = ({ user, role, onLogout }) => {
             </p>
           </div>
           <div className="group relative">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-gray-700 to-gray-600 p-[2px] cursor-pointer hover:from-fuchsia-500 hover:to-purple-600 transition-all flex-shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-500 p-0.5 cursor-pointer transition-all flex-shrink-0">
               <img
                 src={userImage}
-                className="w-full h-full rounded-full object-cover border border-black"
+                className="w-full h-full rounded-full object-cover border-2 border-[#050505]"
                 alt="Profile"
               />
             </div>
