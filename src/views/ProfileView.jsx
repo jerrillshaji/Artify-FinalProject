@@ -28,6 +28,12 @@ const ProfileView = ({ role }) => {
   const [showBackgroundPreview, setShowBackgroundPreview] = useState(false);
   const [backgroundUploading, setBackgroundUploading] = useState(false);
   const backgroundFileInputRef = useRef(null);
+  const [portfolioUploading, setPortfolioUploading] = useState(false);
+  const portfolioFileInputRef = useRef(null);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const videoFileInputRef = useRef(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -368,6 +374,103 @@ const ProfileView = ({ role }) => {
     reader.readAsDataURL(file);
   });
 
+  const handlePortfolioUploadClick = () => {
+    portfolioFileInputRef.current?.click();
+  };
+
+  const handleVideoUploadClick = () => {
+    videoFileInputRef.current?.click();
+  };
+
+  const handlePortfolioFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.id || !profile?.id || user.id !== profile.id || profile?.role !== 'artist') {
+      return;
+    }
+
+    setPortfolioUploading(true);
+    try {
+      const imageDataUrl = await readFileAsDataUrl(file);
+      const currentImages = profile?.portfolio_images || [];
+      const updatedImages = [...currentImages, imageDataUrl];
+
+      const { error } = await supabase
+        .from('artists')
+        .update({
+          portfolio_images: updatedImages,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setProfile((prevProfile) => {
+        if (!prevProfile) return prevProfile;
+        return {
+          ...prevProfile,
+          portfolio_images: updatedImages,
+        };
+      });
+    } catch (error) {
+      console.error('Error uploading portfolio image:', error);
+      alert(error.message || 'Failed to upload portfolio image');
+    } finally {
+      event.target.value = '';
+      setPortfolioUploading(false);
+    }
+  };
+  const handleVideoFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.id || !profile?.id || user.id !== profile.id || profile?.role !== 'artist') {
+      return;
+    }
+
+    setVideoUploading(true);
+    try {
+      const videoDataUrl = await readFileAsDataUrl(file);
+      const currentVideos = profile?.videos || [];
+      const updatedVideos = [...currentVideos, videoDataUrl];
+
+      const { error } = await supabase
+        .from('artists')
+        .update({
+          videos: updatedVideos,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setProfile((prevProfile) => {
+        if (!prevProfile) return prevProfile;
+        return {
+          ...prevProfile,
+          videos: updatedVideos,
+        };
+      });
+    } catch (error) {
+      console.error('Error uploading video:', error);
+      alert(error.message || 'Failed to upload video');
+    } finally {
+      event.target.value = '';
+      setVideoUploading(false);
+    }
+  };
+
+  const handleVideoClick = (videoSrc) => {
+    setSelectedVideo(videoSrc);
+    setShowVideoModal(true);
+  };
+
+  const closeVideoModal = () => {
+    setShowVideoModal(false);
+    setSelectedVideo(null);
+  };
+
   const handleOpenBackgroundActions = () => {
     setShowBackgroundActions(true);
   };
@@ -476,6 +579,20 @@ const ProfileView = ({ role }) => {
         accept="image/*"
         className="hidden"
         onChange={handleBackgroundFileChange}
+      />
+      <input
+        ref={portfolioFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePortfolioFileChange}
+      />
+      <input
+        ref={videoFileInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleVideoFileChange}
       />
       <div className="h-48 sm:h-56 md:h-64 lg:h-80 rounded-[1.5rem] sm:rounded-[2rem] md:rounded-[2.5rem] relative overflow-hidden mb-16 sm:mb-20 md:mb-24">
         <img
@@ -600,30 +717,104 @@ const ProfileView = ({ role }) => {
             <Camera size={20} sm={24} className="text-fuchsia-500 flex-shrink-0" />
             <span>Portfolio Highlights</span>
           </h3>
-          {profile?.portfolio_images && profile.portfolio_images.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
-              {profile.portfolio_images.slice(0, 4).map((img, i) => (
-                <div key={i} className="aspect-video bg-gray-800 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden relative group">
-                  <img 
-                    src={img} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100" 
-                    alt={`Portfolio ${i + 1}`} 
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
-                      <Play size={16} sm={20} fill="currentColor" />
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+            {isOwnProfile && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePortfolioUploadClick}
+                  disabled={portfolioUploading}
+                  className="bg-white/5 hover:bg-white/10 border-2 border-dashed border-white/20 hover:border-fuchsia-500/50 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed min-h-[150px] sm:min-h-[180px] md:min-h-[220px]"
+                >
+                  {portfolioUploading ? (
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <ImagePlus size={24} className="text-fuchsia-400" />
+                      <span className="text-xs text-gray-300">Add Image</span>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center p-12 bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/5 border-dashed">
-              <Camera size={48} className="text-gray-600 mb-4" />
-              <p className="text-gray-400 text-sm text-center">No portfolio images yet</p>
-              <p className="text-gray-500 text-xs text-center mt-1">Upload your work to showcase your talent</p>
-            </div>
-          )}
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVideoUploadClick}
+                  disabled={videoUploading}
+                  className="bg-white/5 hover:bg-white/10 border-2 border-dashed border-white/20 hover:border-cyan-500/50 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed min-h-[150px] sm:min-h-[180px] md:min-h-[220px]"
+                >
+                  {videoUploading ? (
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Play size={24} className="text-cyan-400" />
+                      <span className="text-xs text-gray-300">Add Video</span>
+                    </div>
+                  )}
+                </button>
+              </>
+            )}
+            {(() => {
+              const portfolioItems = [];
+              if (profile?.portfolio_images) {
+                profile.portfolio_images.forEach((img) => {
+                  portfolioItems.push({ type: 'image', src: img });
+                });
+              }
+              if (profile?.videos) {
+                profile.videos.forEach((vid) => {
+                  portfolioItems.push({ type: 'video', src: vid });
+                });
+              }
+              
+              return (
+                <>
+                  {portfolioItems.length > 0 && portfolioItems.map((item, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => item.type === 'video' && handleVideoClick(item.src)}
+                      className={`rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden relative group min-h-[150px] sm:min-h-[180px] md:min-h-[220px] flex items-center justify-center border-2 transition-all duration-300 ${item.type === 'video' ? 'border-cyan-500/50 bg-cyan-950/20 cursor-pointer hover:border-cyan-400 hover:shadow-lg hover:shadow-cyan-500/20' : 'border-fuchsia-500/30 bg-gray-800 cursor-default'}`}
+                    >
+                      {item.type === 'image' ? (
+                        <img 
+                          src={item.src} 
+                          className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100" 
+                          alt={`Portfolio ${i + 1}`} 
+                        />
+                      ) : (
+                        <>
+                          <video 
+                            src={item.src} 
+                            className="w-full h-full object-contain opacity-70 group-hover:opacity-100 transition-opacity duration-300"
+                          ></video>
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-300"></div>
+                        </>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+                          {item.type === 'video' ? (
+                            <Play size={16} fill="currentColor" />
+                          ) : (
+                            <Eye size={16} />
+                          )}
+                        </div>
+                      </div>
+                      {item.type === 'video' && (
+                        <div className="absolute top-2 right-2 bg-cyan-500 text-white rounded-full p-1">
+                          <Play size={12} fill="currentColor" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                  {portfolioItems.length === 0 && !isOwnProfile && (
+                    <div className="col-span-2 flex flex-col items-center justify-center p-12 bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/5 border-dashed">
+                      <Camera size={48} className="text-gray-600 mb-4" />
+                      <p className="text-gray-400 text-sm text-center">No portfolio items yet</p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         </div>
       </div>
 
@@ -733,11 +924,15 @@ const ProfileView = ({ role }) => {
                         onClick={() => handleOpenUserFromConnections(item)}
                         className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
                       >
-                        <img
-                          src={item.avatar_url || `https://i.pravatar.cc/150?u=${item.id}`}
-                          alt={item.full_name || item.username || 'User'}
-                          className="w-10 h-10 rounded-full object-cover border border-white/10"
-                        />
+                        <div className="relative shrink-0">
+                          <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-br from-fuchsia-500 to-cyan-500">
+                            <img
+                              src={item.avatar_url || `https://i.pravatar.cc/150?u=${item.id}`}
+                              alt={item.full_name || item.username || 'User'}
+                              className="w-full h-full rounded-full object-cover border-2 border-[#050505]"
+                            />
+                          </div>
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-white font-semibold truncate">
                             @{item.username || item.id.slice(0, 8)}
@@ -747,7 +942,7 @@ const ProfileView = ({ role }) => {
                           </p>
                         </div>
                         {item.is_verified && (
-                          <Check className="w-4 h-4 p-0.5 bg-cyan-500 text-black rounded-full" strokeWidth={4} />
+                          <Check className="w-4 h-4 p-0.5 bg-cyan-500 text-black rounded-full shrink-0" strokeWidth={4} />
                         )}
                       </button>
                     ))}
@@ -816,6 +1011,32 @@ const ProfileView = ({ role }) => {
                 <span className="text-sm font-semibold text-gray-300 group-hover:text-white text-center">Copy Link</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Player Modal */}
+      {showVideoModal && selectedVideo && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={closeVideoModal}
+        >
+          <div
+            className="bg-black/90 rounded-2xl border border-white/10 w-full max-w-3xl shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={closeVideoModal}
+              className="absolute top-3 right-3 z-10 bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors duration-300"
+            >
+              <X size={24} className="text-white" />
+            </button>
+            <video
+              src={selectedVideo}
+              controls
+              autoPlay
+              className="w-full h-auto max-h-[80vh] rounded-2xl"
+            ></video>
           </div>
         </div>
       )}
