@@ -282,11 +282,14 @@ const ProfileView = ({ role }) => {
     if (nextIsFollowing) {
       const { error: insertError } = await supabase
         .from('follows')
-        .upsert({
+        .insert({
           follower_id: user.id,
           following_id: profile.id,
-        }, { onConflict: 'follower_id,following_id' });
-      error = insertError;
+        });
+
+      // If already followed, Postgres returns unique violation (23505).
+      // Treat it as a no-op success to keep follow state stable.
+      error = insertError && insertError.code !== '23505' ? insertError : null;
     } else {
       const { error: deleteError } = await supabase
         .from('follows')
