@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MessageCircle, MoreHorizontal, Paperclip, Mic, Send, Phone, Video } from 'lucide-react';
 import { useSupabase } from '../context/SupabaseContext';
 import BackButton from '../components/layout/BackButton';
+
+const CONVERSATION_FETCH_LIMIT = 100;
+const MESSAGE_FETCH_LIMIT = 200;
 
 // Simple encryption utilities (Note: For production, use a proper E2EE library)
 const encoder = new TextEncoder();
@@ -58,9 +61,9 @@ const MessagesView = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [encryptionKey, setEncryptionKey] = useState(null);
+  const [conversationError, setConversationError] = useState('');
   const messagesEndRef = useRef(null);
-  const [isTyping, setIsTyping] = useState(false);
+  const isTyping = false;
 
   // Scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -71,93 +74,126 @@ const MessagesView = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Load conversations
-  useEffect(() => {
-    const loadConversations = async () => {
-      if (!user) return;
+  const loadConversations = useCallback(async () => {
+    if (!user) return;
 
-      try {
-        // Get all messages where user is sender or receiver
-        const { data: messagesData, error } = await supabase
+    try {
+      setConversationError('');
+
+      const messageColumns = 'id,sender_id,receiver_id,content,is_read,created_at';
+
+      const [sentResult, receivedResult] = await Promise.all([
+        supabase
           .from('messages')
-          .select(`
-            *,
-            sender:profiles!messages_sender_id_fkey (id, full_name, avatar_url),
-            receiver:profiles!messages_receiver_id_fkey (id, full_name, avatar_url)
-          `)
-          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-          .order('created_at', { ascending: false });
+          .select(messageColumns)
+          .eq('sender_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(CONVERSATION_FETCH_LIMIT),
+        supabase
+          .from('messages')
+          .select(messageColumns)
+          .eq('receiver_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(CONVERSATION_FETCH_LIMIT)
+      ]);
 
-        if (error) throw error;
+      if (sentResult.error) throw sentResult.error;
+      if (receivedResult.error) throw receivedResult.error;
 
-        // Group messages by conversation
-        const conversationMap = new Map();
-        messagesData?.forEach(msg => {
-          const otherUserId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-          const otherUser = msg.sender_id === user.id ? msg.receiver : msg.sender;
-          
-          if (!conversationMap.has(otherUserId)) {
-            conversationMap.set(otherUserId, {
-              id: otherUserId,
-              user: otherUser,
-              lastMessage: msg,
-              unreadCount: 0
-            });
-          }
-        });
+      const mergedMessages = [...(sentResult.data || []), ...(receivedResult.data || [])]
+        .sort((left, right) => new Date(right.created_at) - new Date(left.created_at));
 
-        setConversations(Array.from(conversationMap.values()));
-      } catch (error) {
-        console.error('Error loading conversations:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      const conversationMap = new Map();
 
-    loadConversations();
+      mergedMessages.forEach((msg) => {
+        const otherUserId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
 
-    // Subscribe to new messages
-    const channel = supabase
-      .channel('messages')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          if (payload.new.sender_id !== user.id) {
-            // New message received - refresh conversations
-            loadConversations();
-            if (selectedConversation && payload.new.sender_id === selectedConversation.id) {
-              loadMessages();
-            }
-          }
+        if (!conversationMap.has(otherUserId)) {
+          conversationMap.set(otherUserId, {
+            id: otherUserId,
+            user: null,
+            lastMessage: msg,
+            unreadCount: 0
+          });
         }
-      )
-      .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, supabase]);
+        if (msg.receiver_id === user.id && !msg.is_read) {
+          const existingConversation = conversationMap.get(otherUserId);
+          existingConversation.unreadCount += 1;
+        }
+      });
+
+      const otherUserIds = Array.from(conversationMap.keys());
+
+      if (otherUserIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', otherUserIds);
+
+        if (profilesError) throw profilesError;
+
+        const profileMap = new Map((profiles || []).map((profile) => [profile.id, profile]));
+        conversationMap.forEach((conversation, otherUserId) => {
+          conversation.user = profileMap.get(otherUserId) || null;
+        });
+      }
+
+      const nextConversations = Array.from(conversationMap.values());
+      setConversations(nextConversations);
+      setSelectedConversation((currentConversation) => {
+        if (!currentConversation) return null;
+
+        return nextConversations.find((conversation) => conversation.id === currentConversation.id) || currentConversation;
+      });
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+
+      if (error?.message?.includes('Failed to fetch')) {
+        setConversationError('Could not reach Supabase. Check the project URL, API key, and allowed site URL settings.');
+      } else if (error?.code === '57014') {
+        setConversationError('Conversation loading timed out. The query was reduced, but you should also add the latest message indexes in Supabase.');
+      } else {
+        setConversationError('Could not load conversations right now.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, user]);
 
   // Load messages for selected conversation
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     if (!user || !selectedConversation) return;
 
     try {
-      // Generate encryption key for this conversation
       const key = await generateKey(user.id, selectedConversation.id);
-      setEncryptionKey(key);
 
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${selectedConversation.id}),and(sender_id.eq.${selectedConversation.id},receiver_id.eq.${user.id})`)
-        .order('created_at', { ascending: true });
+      const [sentResult, receivedResult] = await Promise.all([
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('sender_id', user.id)
+          .eq('receiver_id', selectedConversation.id)
+          .order('created_at', { ascending: false })
+          .limit(MESSAGE_FETCH_LIMIT),
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('sender_id', selectedConversation.id)
+          .eq('receiver_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(MESSAGE_FETCH_LIMIT)
+      ]);
 
-      if (error) throw error;
+      if (sentResult.error) throw sentResult.error;
+      if (receivedResult.error) throw receivedResult.error;
 
-      // Decrypt all messages
+      const mergedMessages = [...(sentResult.data || []), ...(receivedResult.data || [])]
+        .sort((left, right) => new Date(left.created_at) - new Date(right.created_at))
+        .slice(-MESSAGE_FETCH_LIMIT);
+
       const decryptedMessages = await Promise.all(
-        data.map(async (msg) => ({
+        mergedMessages.map(async (msg) => ({
           ...msg,
           decryptedContent: await decryptMessage(msg.content, key)
         }))
@@ -165,7 +201,6 @@ const MessagesView = () => {
 
       setMessages(decryptedMessages);
 
-      // Mark messages as read
       await supabase
         .from('messages')
         .update({ is_read: true })
@@ -176,13 +211,43 @@ const MessagesView = () => {
     } catch (error) {
       console.error('Error loading messages:', error);
     }
-  };
+  }, [selectedConversation, supabase, user]);
+
+  useEffect(() => {
+    loadConversations();
+
+    // Subscribe to new messages
+    const channel = supabase
+      .channel('messages')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          const isRelevantConversation = payload.new.sender_id === user.id || payload.new.receiver_id === user.id;
+
+          if (isRelevantConversation) {
+            loadConversations();
+          }
+
+          if (
+            selectedConversation &&
+            (payload.new.sender_id === selectedConversation.id || payload.new.receiver_id === selectedConversation.id)
+          ) {
+            loadMessages();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadConversations, loadMessages, selectedConversation, supabase, user]);
 
   useEffect(() => {
     if (selectedConversation) {
       loadMessages();
     }
-  }, [selectedConversation]);
+  }, [loadMessages, selectedConversation]);
 
   // Send message
   const sendMessage = async () => {
@@ -204,6 +269,7 @@ const MessagesView = () => {
       if (error) throw error;
 
       setNewMessage('');
+      loadConversations();
       loadMessages();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -248,13 +314,13 @@ const MessagesView = () => {
   }
 
   return (
-    <div className="flex flex-col h-auto md:h-[calc(100vh-160px)] animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex min-h-0 flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 md:h-[calc(100dvh-9rem)]">
       <div className="flex items-center mb-4 sm:mb-6">
         <BackButton />
       </div>
-      <div className="grid md:grid-cols-3 gap-4 sm:gap-6 flex-1">
+      <div className="grid flex-1 min-h-0 gap-4 sm:gap-6 md:grid-cols-3">
         {/* Conversations List */}
-        <div className="md:col-span-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col shadow-2xl h-[400px] sm:h-[500px] md:h-auto">
+        <div className="flex h-100 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl sm:h-125 sm:rounded-3xl md:col-span-1 md:h-full md:min-h-0">
           <div className="p-4 sm:p-6 border-b border-white/10">
             <h2 className="text-lg sm:text-xl font-black text-white mb-3 sm:mb-4">Messages</h2>
             <div className="relative">
@@ -269,6 +335,11 @@ const MessagesView = () => {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-1 sm:space-y-2">
+            {conversationError && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200 sm:text-sm">
+                {conversationError}
+              </div>
+            )}
             {conversations
               .filter(conv => conv.user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
               .map(conv => (
@@ -281,7 +352,7 @@ const MessagesView = () => {
                       : 'hover:bg-white/5 border border-transparent'
                   }`}
                 >
-                  <div className="relative flex-shrink-0">
+                  <div className="relative shrink-0">
                     <img
                       src={conv.user?.avatar_url || `https://i.pravatar.cc/150?u=${conv.id}`}
                       className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border border-white/10"
@@ -294,7 +365,7 @@ const MessagesView = () => {
                       <h4 className="font-bold text-sm sm:text-base text-white truncate">
                         {conv.user?.full_name || 'Unknown User'}
                       </h4>
-                      <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium flex-shrink-0">
+                      <span className="text-[9px] sm:text-[10px] text-gray-500 font-medium shrink-0">
                         {formatTime(conv.lastMessage?.created_at)}
                       </span>
                     </div>
@@ -316,7 +387,7 @@ const MessagesView = () => {
         </div>
 
         {/* Chat Area */}
-        <div className="md:col-span-2 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col relative shadow-2xl h-[500px] sm:h-[600px] md:h-auto">
+        <div className="flex h-125 min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl sm:h-150 sm:rounded-3xl md:col-span-2 md:h-full">
           {selectedConversation ? (
             <>
               {/* Chat Header */}
@@ -324,18 +395,18 @@ const MessagesView = () => {
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <img
                     src={selectedConversation.user?.avatar_url || `https://i.pravatar.cc/150?u=${selectedConversation.id}`}
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border border-white/10 flex-shrink-0"
+                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border border-white/10 shrink-0"
                     alt={selectedConversation.user?.full_name}
                   />
                   <div className="min-w-0">
                     <h3 className="font-bold text-sm sm:text-base text-white flex items-center gap-2 truncate">
                       <span className="truncate">{selectedConversation.user?.full_name || 'Unknown User'}</span>
-                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0"></span>
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0"></span>
                     </h3>
                     <p className="text-xs text-gray-400">{isTyping ? 'Typing...' : 'Online'}</p>
                   </div>
                 </div>
-                <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                <div className="flex gap-1 shrink-0 sm:gap-2">
                   <button className="p-1.5 sm:p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors">
                     <Phone size={16} sm={20} />
                   </button>
@@ -349,7 +420,7 @@ const MessagesView = () => {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
+              <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 sm:p-4 sm:space-y-4 md:p-6">
                 {messages.map((msg, index) => {
                   const isOwn = msg.sender_id === user.id;
                   const showDate = index === 0 || 
@@ -368,7 +439,7 @@ const MessagesView = () => {
                         {!isOwn && (
                           <img
                             src={selectedConversation.user?.avatar_url || `https://i.pravatar.cc/150?u=${selectedConversation.id}`}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover self-end mb-1 flex-shrink-0"
+                            className="mb-1 h-7 w-7 shrink-0 self-end rounded-full object-cover sm:h-8 sm:w-8"
                             alt={selectedConversation.user?.full_name}
                           />
                         )}
@@ -399,9 +470,9 @@ const MessagesView = () => {
               </div>
 
               {/* Message Input */}
-              <div className="p-2 sm:p-4 bg-black/20 backdrop-blur-md absolute bottom-0 w-full border-t border-white/10">
+              <div className="w-full border-t border-white/10 bg-black/20 p-2 backdrop-blur-md sm:p-4">
                 <div className="flex items-center gap-1 sm:gap-3 bg-[#0a0a0a] border border-white/10 rounded-full px-1.5 sm:px-2 py-1.5 sm:py-2">
-                  <button className="p-1.5 sm:p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/10 transition-colors flex-shrink-0">
+                  <button className="p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white shrink-0 rounded-full sm:p-2">
                     <Paperclip size={16} sm={18} />
                   </button>
                   <input
@@ -412,13 +483,13 @@ const MessagesView = () => {
                     placeholder="Type a message..."
                     className="flex-1 bg-transparent border-none focus:ring-0 text-white text-xs sm:text-sm placeholder:text-gray-600 min-w-0"
                   />
-                  <button className="p-1.5 sm:p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/10 transition-colors flex-shrink-0">
+                  <button className="p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white shrink-0 rounded-full sm:p-2">
                     <Mic size={16} sm={18} />
                   </button>
                   <button
                     onClick={sendMessage}
                     disabled={sending || !newMessage.trim()}
-                    className="p-1.5 sm:p-2 bg-white text-black rounded-full hover:bg-fuchsia-400 hover:text-white transition-all transform hover:scale-105 hover:shadow-[0_0_15px_rgba(192,38,211,0.5)] flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    className="bg-white p-1.5 text-black transition-all transform hover:scale-105 hover:bg-fuchsia-400 hover:text-white hover:shadow-[0_0_15px_rgba(192,38,211,0.5)] shrink-0 rounded-full disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none sm:p-2"
                   >
                     <Send size={16} sm={18} />
                   </button>

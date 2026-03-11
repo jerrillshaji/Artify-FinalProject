@@ -240,6 +240,17 @@ It already includes trigger-repair logic, diagnostics, and auth helper queries i
 SELECT * FROM pg_policies WHERE tablename = 'profiles';
 ```
 
+### Issue: Messages page times out or shows a CORS error in the browser
+**Cause**: The browser CORS message is usually a side effect of Supabase returning a 500 after the query times out. It is not typically a frontend-origin whitelist bug when the failing request is your normal REST query.
+
+**Solution**: Run the latest message indexes if your database was created before the current schema version:
+```sql
+CREATE INDEX IF NOT EXISTS idx_messages_sender_created ON public.messages(sender_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver_created ON public.messages(receiver_id, created_at DESC);
+```
+
+Also verify **Authentication → URL Configuration** still includes `http://localhost:5173` as the site URL or an allowed redirect origin for local development.
+
 ### Issue: User data not matching
 **Solution**: Check metadata is passed correctly in signUp:
 ```javascript

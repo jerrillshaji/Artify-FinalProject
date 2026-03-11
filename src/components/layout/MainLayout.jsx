@@ -34,13 +34,13 @@ const MainLayout = ({ user, role, onLogout }) => {
       <Header user={user} role={role} onLogout={onLogout} />
 
       {/* Main content area */}
-      <div className="flex pt-20 sm:pt-24 relative z-10 w-full">
+      <div className="relative z-10 flex w-full min-h-0 pt-20 sm:pt-24">
         {/* Sidebar (desktop) */}
         <Sidebar role={role} />
 
         {/* Page content */}
-        <main className="flex-1 w-full max-w-full md:ml-28 px-3 sm:px-4 md:px-6 lg:px-8 pt-3 sm:pt-4 pb-28 md:pb-8 md:py-6 mx-auto">
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 w-full">
+        <main className="mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col px-3 pt-3 pb-28 sm:px-4 sm:pt-4 md:ml-28 md:px-6 md:py-6 lg:px-8">
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 flex-1 min-h-0 w-full">
             <Routes>
               <Route path="/feed" element={<CommunityFeed />} />
               <Route path="/discover" element={role === 'manager' ? <ManagerDiscovery /> : <ArtistCollaborationView />} />

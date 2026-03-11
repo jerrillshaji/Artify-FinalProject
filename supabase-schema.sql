@@ -174,6 +174,8 @@ CREATE INDEX IF NOT EXISTS idx_collaborations_status ON public.collaborations(st
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON public.messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_receiver ON public.messages(receiver_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created ON public.messages(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_created ON public.messages(sender_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver_created ON public.messages(receiver_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_follows_follower ON public.follows(follower_id);
 CREATE INDEX IF NOT EXISTS idx_follows_following ON public.follows(following_id);
 
