@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MessageCircle, MoreHorizontal, Paperclip, Mic, Send, Phone, Video } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useSupabase } from '../context/SupabaseContext';
 import BackButton from '../components/layout/BackButton';
 
@@ -54,6 +55,8 @@ const decryptMessage = async (encryptedJson, key) => {
 
 const MessagesView = () => {
   const { supabase, user } = useSupabase();
+  const [searchParams] = useSearchParams();
+  const targetUserId = searchParams.get('userId');
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -248,6 +251,37 @@ const MessagesView = () => {
       loadMessages();
     }
   }, [loadMessages, selectedConversation]);
+
+  // Auto-open conversation when navigating from a profile with ?userId=
+  useEffect(() => {
+    if (!targetUserId || !user || loading) return;
+
+    const existing = conversations.find((c) => c.id === targetUserId);
+    if (existing) {
+      setSelectedConversation(existing);
+      return;
+    }
+
+    // No existing conversation — fetch the profile and create a virtual conversation object
+    const openNewConversation = async () => {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .eq('id', targetUserId)
+        .maybeSingle();
+
+      if (profileData) {
+        setSelectedConversation({
+          id: profileData.id,
+          user: profileData,
+          lastMessage: null,
+          unreadCount: 0,
+        });
+      }
+    };
+
+    openNewConversation();
+  }, [targetUserId, conversations, loading, supabase, user]);
 
   // Send message
   const sendMessage = async () => {

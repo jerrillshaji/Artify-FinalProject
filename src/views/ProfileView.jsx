@@ -629,7 +629,7 @@ const ProfileView = ({ role }) => {
                 >
                   {followLoading ? 'Updating...' : isFollowing ? 'Unfollow' : 'Follow'}
                 </Button>
-                <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Message</Button>
+                <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate(`/messages?userId=${profile.id}`)}>Message</Button>
                 <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2">Favorite</Button>
               </>
             )}
