@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, MessageCircle, MoreHorizontal, Paperclip, Mic, Send, Phone, Video } from 'lucide-react';
+import { Search, MessageCircle, MoreHorizontal, Paperclip, Mic, Send, Phone, Video, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useSupabase } from '../context/SupabaseContext';
 import BackButton from '../components/layout/BackButton';
@@ -66,12 +66,33 @@ const MessagesView = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [conversationError, setConversationError] = useState('');
   const [updatingBookingId, setUpdatingBookingId] = useState(null);
+  const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const shouldStickToBottomRef = useRef(true);
   const isTyping = false;
 
+  const scrollMessagesToBottom = useCallback((behavior = 'auto') => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  }, []);
+
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    shouldStickToBottomRef.current = distanceFromBottom < 80;
+  }, []);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (shouldStickToBottomRef.current) {
+      scrollMessagesToBottom();
+    }
+  }, [messages, scrollMessagesToBottom]);
+
+  useEffect(() => {
+    shouldStickToBottomRef.current = true;
+    scrollMessagesToBottom();
+  }, [selectedConversation?.id, scrollMessagesToBottom]);
 
   const loadConversations = useCallback(async () => {
     if (!user) return;
@@ -324,12 +345,12 @@ const MessagesView = () => {
 
   return (
     <div className="flex min-h-0 flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 md:h-[calc(100dvh-9rem)]">
-      <div className="mb-4 flex items-center sm:mb-6">
+      <div className={`mb-4 items-center sm:mb-6 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <BackButton />
       </div>
 
       <div className="grid flex-1 min-h-0 gap-4 sm:gap-6 md:grid-cols-3">
-        <div className="flex h-100 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl sm:h-125 sm:rounded-3xl md:col-span-1 md:h-full md:min-h-0">
+        <div className={`${selectedConversation ? 'hidden md:flex' : 'flex'} h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl sm:h-[calc(100dvh-12rem)] sm:rounded-3xl md:col-span-1 md:h-full md:min-h-0`}>
           <div className="border-b border-white/10 p-4 sm:p-6">
             <h2 className="mb-3 text-lg font-black text-white sm:mb-4 sm:text-xl">Messages</h2>
             <div className="relative">
@@ -375,7 +396,7 @@ const MessagesView = () => {
           </div>
         </div>
 
-        <div className="flex h-125 min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl sm:h-150 sm:rounded-3xl md:col-span-2 md:h-full">
+        <div className={`${selectedConversation ? 'flex' : 'hidden md:flex'} h-[calc(100dvh-11rem)] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl sm:h-[calc(100dvh-12rem)] sm:rounded-3xl md:col-span-2 md:h-full`}>
           {selectedConversation ? (
             <>
               <div className="flex items-center justify-between border-b border-white/10 bg-white/5 p-3 sm:p-4">
@@ -397,10 +418,21 @@ const MessagesView = () => {
                   <button className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:p-2"><Phone size={16} /></button>
                   <button className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:p-2"><Video size={16} /></button>
                   <button className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:p-2"><MoreHorizontal size={16} /></button>
+                  <button
+                    onClick={() => setSelectedConversation(null)}
+                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:hidden"
+                    aria-label="Close conversation"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-3 sm:space-y-4 sm:p-4 md:p-6">
+              <div
+                ref={messagesContainerRef}
+                onScroll={handleMessagesScroll}
+                className="flex-1 min-h-0 space-y-3 overflow-y-auto p-3 sm:space-y-4 sm:p-4 md:p-6"
+              >
                 {messages.map((msg, index) => {
                   const isOwn = msg.sender_id === user.id;
                   const booking = msg.bookingAction ? bookingRecords[msg.bookingAction.bookingId] : null;
