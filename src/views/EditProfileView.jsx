@@ -6,7 +6,7 @@ import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
 
 const EditProfileView = () => {
-  const { supabase, user } = useSupabase();
+  const { supabase, user, profile: sharedProfile, refreshProfile } = useSupabase();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,15 +33,7 @@ const EditProfileView = () => {
         }
 
         // Fetch profile
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          throw profileError;
-        }
+        const profileData = sharedProfile || await refreshProfile(user.id);
 
         if (profileData) {
           setProfile(profileData);
@@ -66,7 +58,7 @@ const EditProfileView = () => {
     };
 
     fetchProfile();
-  }, [user, supabase]);
+  }, [user, sharedProfile, refreshProfile]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -120,8 +112,14 @@ const EditProfileView = () => {
         throw profileError;
       }
 
+      const updatedProfile = await refreshProfile(user.id);
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+        setImagePreview(updatedProfile.avatar_url || null);
+      }
+
       // Update artists or managers table if needed
-      const role = profile?.role;
+      const role = updatedProfile?.role || profile?.role;
       if (role === 'artist' && formData.stage_name) {
         const { error: artistError } = await supabase
           .from('artists')

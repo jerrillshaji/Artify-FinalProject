@@ -1,49 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, BellRing, MessageCircle, User, LogOut } from 'lucide-react';
 import { useSupabase } from '../../context/SupabaseContext';
 
+const withCacheBuster = (imageUrl, version) => {
+  if (!imageUrl || imageUrl.startsWith('data:') || !version) {
+    return imageUrl;
+  }
+
+  const separator = imageUrl.includes('?') ? '&' : '?';
+  return `${imageUrl}${separator}v=${encodeURIComponent(version)}`;
+};
+
 const Header = ({ user, role, onLogout }) => {
   const navigate = useNavigate();
-  const { supabase } = useSupabase();
-  const [resolvedUsername, setResolvedUsername] = useState(null);
-  const [userAvatar, setUserAvatar] = useState(null);
+  const { profile } = useSupabase();
 
   // Safe access to user data
-  const userName = user?.user_metadata?.full_name || (role === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.');
+  const userName = profile?.full_name || user?.user_metadata?.full_name || (role === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.');
   const metadataUsername = user?.user_metadata?.username;
   const userRole = role === 'artist' ? 'Artist' : 'Organizer';
-  const userImage = userAvatar || "https://i.pravatar.cc/150?img=60";
-  const usernameToUse = (resolvedUsername || metadataUsername || '').toLowerCase().trim();
+  const resolvedAvatar = profile?.avatar_url || (profile?.role === 'artist' ? profile?.portfolio_images?.[0] : null);
+  const userImage = withCacheBuster(resolvedAvatar, profile?.updated_at) || "https://i.pravatar.cc/150?img=60";
+  const usernameToUse = (profile?.username || metadataUsername || '').toLowerCase().trim();
   const isValidUsername = /^[a-z0-9_]{3,}$/.test(usernameToUse);
   const profilePath = isValidUsername ? `/${usernameToUse}` : '/profile';
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user?.id) {
-        setResolvedUsername(null);
-        setUserAvatar(null);
-        return;
-      }
-
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('username, avatar_url')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        setResolvedUsername(data?.username || null);
-        setUserAvatar(data?.avatar_url || null);
-      } catch (error) {
-        console.error('Error loading profile data:', error);
-        setResolvedUsername(null);
-        setUserAvatar(null);
-      }
-    };
-
-    fetchUserData();
-  }, [supabase, user?.id]);
 
   return (
     <header className="fixed top-0 w-full bg-[#050505]/80 backdrop-blur-xl border-b border-white/5 z-50 px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
@@ -78,6 +59,7 @@ const Header = ({ user, role, onLogout }) => {
           <div className="group relative">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-500 p-0.5 cursor-pointer transition-all flex-shrink-0">
               <img
+                key={userImage}
                 src={userImage}
                 className="w-full h-full rounded-full object-cover border-2 border-[#050505]"
                 alt="Profile"

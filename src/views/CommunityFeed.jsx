@@ -4,6 +4,20 @@ import { MoreHorizontal, Heart, Share2, TrendingUp, Plus, MapPin, RefreshCw, Use
 import { useSupabase } from '../context/SupabaseContext';
 import Button from '../components/ui/Button';
 
+const withCacheBuster = (imageUrl, version) => {
+  if (!imageUrl || imageUrl.startsWith('data:') || !version) {
+    return imageUrl;
+  }
+
+  const separator = imageUrl.includes('?') ? '&' : '?';
+  return `${imageUrl}${separator}v=${encodeURIComponent(version)}`;
+};
+
+const resolveAvatarUrl = (profileLike) => {
+  const baseAvatar = profileLike?.avatar_url || (profileLike?.role === 'artist' ? profileLike?.portfolio_images?.[0] : null);
+  return withCacheBuster(baseAvatar, profileLike?.updated_at) || `https://i.pravatar.cc/150?u=${profileLike?.id || 'artify'}`;
+};
+
 const POST_SELECT = `
   id,
   author_id,
@@ -41,7 +55,7 @@ const formatRelativeTime = (timestamp) => {
 
 const CommunityFeed = () => {
   const navigate = useNavigate();
-  const { supabase, user } = useSupabase();
+  const { supabase, user, profile: sharedProfile } = useSupabase();
   const [featuredArtists, setFeaturedArtists] = useState([]);
   const [featuredBand, setFeaturedBand] = useState(null);
   const [feedPosts, setFeedPosts] = useState([]);
@@ -143,6 +157,13 @@ const CommunityFeed = () => {
     }
     return artist?.id ? `/profile?id=${artist.id}` : '/profile';
   };
+
+  const visibleFeaturedArtists = featuredArtists.map((artist) => {
+    if (artist.id === sharedProfile?.id) {
+      return { ...artist, ...sharedProfile };
+    }
+    return artist;
+  });
 
   const handleSharePost = async (post) => {
     const profileLink = `${window.location.origin}/posts/${post.id}`;
@@ -314,26 +335,31 @@ const CommunityFeed = () => {
       </div>
 
       <div className="flex gap-3 overflow-x-auto px-2 pb-2 scrollbar-hide sm:gap-4 md:gap-6">
-        {featuredArtists.map((artist, i) => (
-          <button
-            key={artist.id}
-            onClick={() => navigate(`/profile?id=${artist.id}`)}
-            className="group flex shrink-0 flex-col items-center gap-2 sm:gap-3"
-          >
-            <div className="h-14 w-14 rounded-full bg-linear-to-tr from-fuchsia-500 via-purple-500 to-cyan-500 p-0.5 shadow-lg transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] sm:h-16 sm:w-16 md:h-20 md:w-20 md:p-1">
-              <div className="h-full w-full rounded-full bg-black p-0.5 md:p-1">
-                <img
-                  src={artist.avatar_url || `https://i.pravatar.cc/150?u=${artist.id}`}
-                  alt={artist.full_name || artist.username || 'Artist'}
-                  className="h-full w-full rounded-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0"
-                />
+        {visibleFeaturedArtists.map((artist, i) => {
+          const artistAvatar = resolveAvatarUrl(artist);
+
+          return (
+            <button
+              key={artist.id}
+              onClick={() => navigate(`/profile?id=${artist.id}`)}
+              className="group flex shrink-0 flex-col items-center gap-2 sm:gap-3"
+            >
+              <div className="h-14 w-14 rounded-full bg-linear-to-tr from-fuchsia-500 via-purple-500 to-cyan-500 p-0.5 shadow-lg transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] sm:h-16 sm:w-16 md:h-20 md:w-20 md:p-1">
+                <div className="h-full w-full rounded-full bg-black p-0.5 md:p-1">
+                  <img
+                    key={artistAvatar}
+                    src={artistAvatar}
+                    alt={artist.full_name || artist.username || 'Artist'}
+                    className="h-full w-full rounded-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0"
+                  />
+                </div>
               </div>
-            </div>
-            <span className="text-[10px] font-bold tracking-wide text-gray-500 transition-colors group-hover:text-white sm:text-xs">
-              @{artist.username || `artist_${i}`}
-            </span>
-          </button>
-        ))}
+              <span className="text-[10px] font-bold tracking-wide text-gray-500 transition-colors group-hover:text-white sm:text-xs">
+                @{artist.username || `artist_${i}`}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <section className="space-y-4">

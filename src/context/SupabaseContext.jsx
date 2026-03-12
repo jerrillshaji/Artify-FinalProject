@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const SupabaseContext = createContext();
@@ -15,6 +15,56 @@ export function SupabaseProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+
+  const refreshProfile = useCallback(async (userId = user?.id) => {
+    if (!userId) {
+      setProfile(null);
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error loading profile:', error);
+      throw error;
+    }
+
+    let enrichedProfile = data || null;
+
+    if (data?.role === 'artist') {
+      const { data: artistData, error: artistError } = await supabase
+        .from('artists')
+        .select('stage_name, portfolio_images')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (artistError) {
+        console.error('Error loading artist profile details:', artistError);
+      } else if (artistData) {
+        enrichedProfile = { ...data, ...artistData };
+      }
+    } else if (data?.role === 'manager') {
+      const { data: managerData, error: managerError } = await supabase
+        .from('managers')
+        .select('company_name')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (managerError) {
+        console.error('Error loading manager profile details:', managerError);
+      } else if (managerData) {
+        enrichedProfile = { ...data, ...managerData };
+      }
+    }
+
+    setProfile(enrichedProfile);
+    return enrichedProfile;
+  }, [user?.id]);
 
   useEffect(() => {
     // Check for hash in URL (email confirmation, magic link, etc.)
@@ -73,6 +123,17 @@ export function SupabaseProvider({ children }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setProfile(null);
+      return;
+    }
+
+    refreshProfile(user.id).catch(() => {
+      setProfile(null);
+    });
+  }, [refreshProfile, user?.id]);
 
   const normalizeUsername = (value, fallbackId = '') => {
     const cleaned = (value || '')
@@ -308,7 +369,9 @@ export function SupabaseProvider({ children }) {
     supabase,
     session,
     user,
+    profile,
     loading,
+    refreshProfile,
     signUp,
     signIn,
     resendConfirmation,
