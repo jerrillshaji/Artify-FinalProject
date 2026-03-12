@@ -1,105 +1,395 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, DollarSign, Calendar, Users, Clock, MoreHorizontal, Paperclip } from 'lucide-react';
+import { Zap, DollarSign, Calendar, Users, Clock, Plus, X } from 'lucide-react';
 import Button from '../components/ui/Button';
-import { MOCK_MANAGER_STATS } from '../data/mockData';
 import BackButton from '../components/layout/BackButton';
+import { useSupabase } from '../context/SupabaseContext';
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
+  const { supabase, user } = useSupabase();
+  const [events, setEvents] = useState([]);
+  const [artists, setArtists] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    location: '',
+    venueName: '',
+    city: '',
+    country: '',
+    date: '',
+    time: '',
+    durationHours: '2',
+    amount: '',
+    artistId: '',
+    message: '',
+    roleNeeded: 'performer',
+  });
+
+  const loadManagerData = async () => {
+    if (!user?.id) return;
+
+    setLoading(true);
+    try {
+      const [eventsResult, artistsResult] = await Promise.all([
+        supabase
+          .from('events')
+          .select('id,title,event_date,end_date,location,status,budget_min,budget_max,venue_name,city,country')
+          .eq('organizer_id', user.id)
+          .order('event_date', { ascending: true }),
+        supabase
+          .from('profiles')
+          .select('id,full_name,username,avatar_url')
+          .eq('role', 'artist')
+          .order('created_at', { ascending: false }),
+      ]);
+
+      if (eventsResult.error) throw eventsResult.error;
+      if (artistsResult.error) throw artistsResult.error;
+
+      const eventRows = eventsResult.data || [];
+
+      const bookingResult = await supabase
+        .from('bookings')
+        .select('id,event_id,status')
+        .eq('organizer_id', user.id);
+
+      if (bookingResult.error) throw bookingResult.error;
+
+      const bookings = bookingResult.data || [];
+      const countsByEvent = bookings.reduce((acc, booking) => {
+        if (!acc[booking.event_id]) {
+          acc[booking.event_id] = { pending: 0, accepted: 0, declined: 0 };
+        }
+        if (booking.status === 'pending') acc[booking.event_id].pending += 1;
+        if (booking.status === 'accepted') acc[booking.event_id].accepted += 1;
+        if (booking.status === 'declined') acc[booking.event_id].declined += 1;
+        return acc;
+      }, {});
+
+      const enriched = eventRows.map((eventItem) => ({
+        ...eventItem,
+        offers: countsByEvent[eventItem.id] || { pending: 0, accepted: 0, declined: 0 },
+      }));
+
+      setEvents(enriched);
+      setArtists(artistsResult.data || []);
+    } catch (error) {
+      console.error('Error loading manager dashboard:', error);
+      setEvents([]);
+      setArtists([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadManagerData();
+  }, [supabase, user?.id]);
+
+  const managerStats = useMemo(() => {
+    const now = new Date();
+    const thisMonth = events.filter((eventItem) => {
+      const date = new Date(eventItem.event_date);
+      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    });
+
+    const pendingOffers = events.reduce((sum, eventItem) => sum + (eventItem.offers?.pending || 0), 0);
+    const acceptedOffers = events.reduce((sum, eventItem) => sum + (eventItem.offers?.accepted || 0), 0);
+    const totalBudget = events.reduce((sum, eventItem) => sum + Number(eventItem.budget_max || eventItem.budget_min || 0), 0);
+
+    return [
+      { label: 'Budget Planned', value: `$${Math.round(totalBudget).toLocaleString()}`, icon: DollarSign, color: 'text-emerald-400', trend: 'Across Events' },
+      { label: 'Events', value: String(events.length).padStart(2, '0'), icon: Calendar, color: 'text-fuchsia-400', trend: `${thisMonth.length} this month` },
+      { label: 'Pending Offers', value: String(pendingOffers).padStart(2, '0'), icon: Clock, color: 'text-yellow-400', trend: 'Awaiting response' },
+      { label: 'Accepted', value: String(acceptedOffers).padStart(2, '0'), icon: Users, color: 'text-cyan-400', trend: 'Booked artists' },
+    ];
+  }, [events]);
+
+  const toIsoStart = (dateValue, timeValue) => {
+    const localDate = new Date(`${dateValue}T${timeValue}`);
+    if (Number.isNaN(localDate.getTime())) return null;
+    return localDate.toISOString();
+  };
+
+  const resetForm = () => {
+    setForm({
+      title: '',
+      description: '',
+      location: '',
+      venueName: '',
+      city: '',
+      country: '',
+      date: '',
+      time: '',
+      durationHours: '2',
+      amount: '',
+      artistId: '',
+      message: '',
+      roleNeeded: 'performer',
+    });
+  };
+
+  const handleCreateOffer = async (event) => {
+    event.preventDefault();
+    if (!user?.id) return;
+
+    const startIso = toIsoStart(form.date, form.time);
+    const duration = Number(form.durationHours);
+    const amount = Number(form.amount);
+
+    if (!form.title.trim() || !form.location.trim() || !startIso || !form.artistId || !duration || !amount) {
+      setFormError('Please fill all required fields (title, location, date/time, duration, offer amount, and artist).');
+      return;
+    }
+
+    setCreating(true);
+    setFormError('');
+
+    try {
+      const startDate = new Date(startIso);
+      const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000).toISOString();
+
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .insert({
+          organizer_id: user.id,
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          event_date: startIso,
+          end_date: endDate,
+          location: form.location.trim(),
+          venue_name: form.venueName.trim() || null,
+          city: form.city.trim() || null,
+          country: form.country.trim() || null,
+          budget_min: amount,
+          budget_max: amount,
+          status: 'published',
+          required_roles: [form.roleNeeded.trim()],
+        })
+        .select('id,event_date')
+        .single();
+
+      if (eventError) throw eventError;
+
+      const { error: bookingError } = await supabase
+        .from('bookings')
+        .insert({
+          event_id: eventData.id,
+          artist_id: form.artistId,
+          organizer_id: user.id,
+          status: 'pending',
+          offer_amount: amount,
+          message: form.message.trim() || null,
+          event_date: eventData.event_date,
+        });
+
+      if (bookingError) throw bookingError;
+
+      setShowCreateModal(false);
+      resetForm();
+      await loadManagerData();
+    } catch (error) {
+      console.error('Error creating event offer:', error);
+      setFormError(error.message || 'Could not create event offer.');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
-  <div className="space-y-4 sm:space-y-6 md:space-y-8 pb-12">
-    <div className="flex items-center mb-4 sm:mb-6">
-      <BackButton />
-    </div>
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Event Command</h1>
-        <p className="text-gray-400 text-sm sm:text-base">Overview for TechGlobal Inc.</p>
+    <div className="space-y-4 pb-12 sm:space-y-6 md:space-y-8">
+      <div className="mb-4 flex items-center sm:mb-6">
+        <BackButton />
       </div>
-      <Button className="px-3 sm:px-5 text-xs sm:text-sm self-start"><Zap size={16} sm={18}/> <span className="hidden sm:inline">Create Event</span><span className="sm:hidden">Create</span></Button>
-    </div>
-    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-      {MOCK_MANAGER_STATS.map((stat, i) => (
-        <div key={i} className="bg-white/5 backdrop-blur-md p-3 sm:p-4 md:p-6 rounded-2xl sm:rounded-3xl border border-white/5 hover:bg-white/10 transition-colors group relative overflow-hidden">
-          <div className={`absolute top-0 right-0 p-2 sm:p-4 opacity-20 group-hover:opacity-100 transition-opacity transform group-hover:scale-110 duration-500 ${stat.color}`}>
-            <stat.icon size={32} sm={48} />
-          </div>
-          <p className="text-[9px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 sm:mb-2">{stat.label}</p>
-          <p className="text-2xl sm:text-3xl font-black text-white mb-0.5 sm:mb-1">{stat.value}</p>
-          <p className={`text-[10px] sm:text-xs font-medium ${stat.color}`}>{stat.trend}</p>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Event Command</h1>
+          <p className="text-sm text-gray-400 sm:text-base">Create event gigs and send booking offers directly to artists.</p>
         </div>
-      ))}
-    </div>
-    <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
-      <div className="lg:col-span-2 bg-white/5 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-white/5 overflow-hidden">
-        <div className="p-3 sm:p-4 md:p-6 border-b border-white/5 flex justify-between items-center">
-          <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-fuchsia-500 animate-pulse"></div>
-            <span className="hidden sm:inline">Active Events</span>
+        <Button className="self-start px-3 text-xs sm:px-5 sm:text-sm" onClick={() => setShowCreateModal(true)}>
+          <Zap size={16} sm={18} />
+          <span className="hidden sm:inline">Create Event Offer</span>
+          <span className="sm:hidden">Create</span>
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        {managerStats.map((stat, i) => (
+          <div key={i} className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur-md transition-colors hover:bg-white/10 sm:rounded-3xl sm:p-4 md:p-6">
+            <div className={`absolute right-0 top-0 p-2 opacity-20 transition-opacity duration-500 group-hover:scale-110 group-hover:opacity-100 sm:p-4 ${stat.color}`}>
+              <stat.icon size={32} sm={48} />
+            </div>
+            <p className="mb-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 sm:mb-2 sm:text-xs">{stat.label}</p>
+            <p className="mb-0.5 text-2xl font-black text-white sm:mb-1 sm:text-3xl">{stat.value}</p>
+            <p className={`text-[10px] font-medium sm:text-xs ${stat.color}`}>{stat.trend}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/5 backdrop-blur-xl sm:rounded-3xl">
+        <div className="flex items-center justify-between border-b border-white/5 p-3 sm:p-4 md:p-6">
+          <h2 className="flex items-center gap-2 text-base font-bold text-white sm:text-lg">
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-fuchsia-500 sm:h-2 sm:w-2"></div>
+            <span className="hidden sm:inline">Active Gig Events</span>
             <span className="sm:hidden">Events</span>
           </h2>
-          <button className="text-xs sm:text-sm text-fuchsia-400 font-bold hover:underline">View All</button>
+          <Button variant="secondary" className="px-3 py-1.5 text-xs sm:text-sm" onClick={loadManagerData}>Refresh</Button>
         </div>
-        <div className="p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4">
-          {[
-            { title: "Summer Tech Summit", date: "Aug 15", status: "On Track", progress: 85, color: "bg-emerald-500" },
-            { title: "Quarterly Gala", date: "Oct 02", status: "Planning", progress: 30, color: "bg-yellow-500" },
-            { title: "Product Launch Party", date: "Nov 12", status: "Pending Venue", progress: 10, color: "bg-red-500" },
-          ].map((evt, i) => (
-            <div key={i} className="bg-black/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all">
-              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-white/5 flex flex-col items-center justify-center border border-white/5 flex-shrink-0">
-                  <span className="text-[8px] sm:text-[10px] font-bold text-gray-500 uppercase">{evt.date.split(' ')[0]}</span>
-                  <span className="text-sm sm:text-lg font-black text-white">{evt.date.split(' ')[1]}</span>
+
+        <div className="space-y-3 p-3 sm:space-y-4 sm:p-4 md:p-6">
+          {loading ? (
+            [1, 2, 3].map((item) => (
+              <div key={item} className="h-24 animate-pulse rounded-2xl border border-white/5 bg-black/20"></div>
+            ))
+          ) : events.length > 0 ? (
+            events.map((eventItem) => (
+              <div key={eventItem.id} className="flex flex-col gap-4 rounded-xl border border-white/5 bg-black/20 p-4 transition-all hover:border-white/10 sm:rounded-2xl sm:p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold text-white sm:text-lg">{eventItem.title}</h3>
+                    <p className="mt-1 text-xs text-gray-400 sm:text-sm">
+                      {new Date(eventItem.event_date).toLocaleString()} • {eventItem.venue_name || eventItem.location}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500 sm:text-sm">{eventItem.city || ''}{eventItem.city && eventItem.country ? ', ' : ''}{eventItem.country || ''}</p>
+                  </div>
+                  <span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-fuchsia-300">
+                    {eventItem.status}
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="font-bold text-sm sm:text-base text-white truncate">{evt.title}</h3>
-                  <p className="text-xs text-gray-400">{evt.status}</p>
+
+                <div className="grid grid-cols-3 gap-2 text-xs sm:gap-3 sm:text-sm">
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-gray-500">Offer</p>
+                    <p className="font-bold text-white">${Number(eventItem.budget_max || eventItem.budget_min || 0).toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-gray-500">Pending</p>
+                    <p className="font-bold text-yellow-300">{eventItem.offers.pending}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-gray-500">Accepted</p>
+                    <p className="font-bold text-emerald-300">{eventItem.offers.accepted}</p>
+                  </div>
                 </div>
               </div>
-              <div className="w-24 sm:w-32 hidden md:block">
-                <div className="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
-                  <span>Progress</span>
-                  <span>{evt.progress}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                  <div className={`h-full ${evt.color} rounded-full`} style={{ width: `${evt.progress}%` }}></div>
-                </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 p-10 text-center">
+              <h3 className="text-xl font-bold text-white">No event gigs yet</h3>
+              <p className="mt-2 text-sm text-gray-400">Create your first event offer and send it to an artist.</p>
+              <div className="mt-5 flex justify-center">
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <Plus size={16} />
+                  Create Event Offer
+                </Button>
               </div>
-              <button className="p-1.5 sm:p-2 bg-white/10 rounded-full text-gray-400 hover:text-white hover:bg-white/20 transition-colors flex-shrink-0">
-                <MoreHorizontal size={16} sm={18} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-[#111111] p-5 sm:p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-fuchsia-300">New Gig Event</p>
+                <h3 className="mt-1 text-2xl font-black text-white">Create Event And Send Offer</h3>
+              </div>
+              <button onClick={() => setShowCreateModal(false)} className="rounded-full p-2 text-white hover:bg-white/10">
+                <X size={18} />
               </button>
             </div>
-          ))}
-        </div>
-      </div>
-      <div className="space-y-4 sm:space-y-6">
-        <div className="bg-gradient-to-b from-fuchsia-900/40 to-purple-900/40 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-white/10 p-4 sm:p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mt-2 -mr-2 sm:-mt-4 sm:-mr-4 w-16 h-16 sm:w-24 sm:h-24 bg-fuchsia-500 rounded-full blur-[50px] opacity-30"></div>
-          <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 relative z-10">Quick Actions</h3>
-          <div className="space-y-2 sm:space-y-3 relative z-10">
-            <button className="w-full text-left p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-2 sm:gap-3 transition-colors group">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0"><DollarSign size={14} sm={16}/></div>
-              <span className="text-xs sm:text-sm font-medium text-gray-200">Process Payments</span>
-            </button>
-            <button
-              onClick={() => navigate('/discover')}
-              className="w-full text-left p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-2 sm:gap-3 transition-colors group"
-            >
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0"><Users size={14} sm={16}/></div>
-              <span className="text-xs sm:text-sm font-medium text-gray-200">Scout Talent</span>
-            </button>
-            <button className="w-full text-left p-2 sm:p-3 rounded-lg sm:rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center gap-2 sm:gap-3 transition-colors group">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-yellow-500/20 text-yellow-400 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0"><Paperclip size={14} sm={16}/></div>
-              <span className="text-xs sm:text-sm font-medium text-gray-200">Review Contracts</span>
-            </button>
+
+            <form onSubmit={handleCreateOffer} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Event Title *</span>
+                  <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="Friday Night Corporate Gig" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Artist *</span>
+                  <select value={form.artistId} onChange={(e) => setForm((p) => ({ ...p, artistId: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60">
+                    <option value="">Select artist</option>
+                    {artists.map((artist) => (
+                      <option key={artist.id} value={artist.id}>{artist.full_name || artist.username || artist.id}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-white">Description</span>
+                <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} rows={3} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="Audience details, genre expectation, stage setup, and anything important." />
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Date *</span>
+                  <input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Time *</span>
+                  <input type="time" value={form.time} onChange={(e) => setForm((p) => ({ ...p, time: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Length (hours) *</span>
+                  <input type="number" min="1" step="0.5" value={form.durationHours} onChange={(e) => setForm((p) => ({ ...p, durationHours: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Offer Amount (USD) *</span>
+                  <input type="number" min="1" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <label className="block lg:col-span-2">
+                  <span className="mb-2 block text-sm font-semibold text-white">Location *</span>
+                  <input value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="Downtown Convention Center" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">City</span>
+                  <input value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="Kochi" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Country</span>
+                  <input value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="India" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Venue Name</span>
+                  <input value={form.venueName} onChange={(e) => setForm((p) => ({ ...p, venueName: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="Grand Hall A" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Role Needed</span>
+                  <input value={form.roleNeeded} onChange={(e) => setForm((p) => ({ ...p, roleNeeded: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="DJ, Vocalist, Band" />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-white">Offer Message To Artist</span>
+                <textarea value={form.message} onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))} rows={3} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="We'd love you to headline this evening set. Soundcheck at 5 PM." />
+              </label>
+
+              {formError && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">{formError}</div>}
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create Event + Send Offer'}</Button>
+                <Button type="button" variant="secondary" onClick={() => { setShowCreateModal(false); setFormError(''); resetForm(); }}>Cancel</Button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
-  </div>
   );
 };
 

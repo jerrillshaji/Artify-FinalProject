@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Star, Camera, Play, X, ImagePlus, Eye } from 'lucide-react';
+import { Check, Star, Camera, X, ImagePlus, Plus, Grid3X3 } from 'lucide-react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaInstagram, FaFacebook, FaWhatsapp, FaCopy } from 'react-icons/fa';
 import Button from '../components/ui/Button';
@@ -24,16 +24,12 @@ const ProfileView = ({ role }) => {
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
   const [followingCount, setFollowingCount] = useState(0);
+  const [profilePosts, setProfilePosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
   const [showBackgroundActions, setShowBackgroundActions] = useState(false);
   const [showBackgroundPreview, setShowBackgroundPreview] = useState(false);
   const [backgroundUploading, setBackgroundUploading] = useState(false);
   const backgroundFileInputRef = useRef(null);
-  const [portfolioUploading, setPortfolioUploading] = useState(false);
-  const portfolioFileInputRef = useRef(null);
-  const [videoUploading, setVideoUploading] = useState(false);
-  const videoFileInputRef = useRef(null);
-  const [showVideoModal, setShowVideoModal] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -355,103 +351,6 @@ const ProfileView = ({ role }) => {
     reader.readAsDataURL(file);
   });
 
-  const handlePortfolioUploadClick = () => {
-    portfolioFileInputRef.current?.click();
-  };
-
-  const handleVideoUploadClick = () => {
-    videoFileInputRef.current?.click();
-  };
-
-  const handlePortfolioFileChange = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !user?.id || !profile?.id || user.id !== profile.id || profile?.role !== 'artist') {
-      return;
-    }
-
-    setPortfolioUploading(true);
-    try {
-      const imageDataUrl = await readFileAsDataUrl(file);
-      const currentImages = profile?.portfolio_images || [];
-      const updatedImages = [...currentImages, imageDataUrl];
-
-      const { error } = await supabase
-        .from('artists')
-        .update({
-          portfolio_images: updatedImages,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        throw error;
-      }
-
-      setProfile((prevProfile) => {
-        if (!prevProfile) return prevProfile;
-        return {
-          ...prevProfile,
-          portfolio_images: updatedImages,
-        };
-      });
-    } catch (error) {
-      console.error('Error uploading portfolio image:', error);
-      alert(error.message || 'Failed to upload portfolio image');
-    } finally {
-      event.target.value = '';
-      setPortfolioUploading(false);
-    }
-  };
-  const handleVideoFileChange = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !user?.id || !profile?.id || user.id !== profile.id || profile?.role !== 'artist') {
-      return;
-    }
-
-    setVideoUploading(true);
-    try {
-      const videoDataUrl = await readFileAsDataUrl(file);
-      const currentVideos = profile?.videos || [];
-      const updatedVideos = [...currentVideos, videoDataUrl];
-
-      const { error } = await supabase
-        .from('artists')
-        .update({
-          videos: updatedVideos,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-
-      if (error) {
-        throw error;
-      }
-
-      setProfile((prevProfile) => {
-        if (!prevProfile) return prevProfile;
-        return {
-          ...prevProfile,
-          videos: updatedVideos,
-        };
-      });
-    } catch (error) {
-      console.error('Error uploading video:', error);
-      alert(error.message || 'Failed to upload video');
-    } finally {
-      event.target.value = '';
-      setVideoUploading(false);
-    }
-  };
-
-  const handleVideoClick = (videoSrc) => {
-    setSelectedVideo(videoSrc);
-    setShowVideoModal(true);
-  };
-
-  const closeVideoModal = () => {
-    setShowVideoModal(false);
-    setSelectedVideo(null);
-  };
-
   const handleOpenBackgroundActions = () => {
     setShowBackgroundActions(true);
   };
@@ -512,6 +411,31 @@ const ProfileView = ({ role }) => {
     }
   };
 
+  useEffect(() => {
+    const loadProfilePosts = async () => {
+      if (!profile?.id) return;
+
+      setPostsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('posts')
+          .select('id, author_id, content, location, image_url, tags, created_at')
+          .eq('author_id', profile.id)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setProfilePosts(data || []);
+      } catch (postsError) {
+        console.error('Error loading profile posts:', postsError);
+        setProfilePosts([]);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+
+    loadProfilePosts();
+  }, [profile?.id, supabase]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -561,20 +485,6 @@ const ProfileView = ({ role }) => {
         className="hidden"
         onChange={handleBackgroundFileChange}
       />
-      <input
-        ref={portfolioFileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handlePortfolioFileChange}
-      />
-      <input
-        ref={videoFileInputRef}
-        type="file"
-        accept="video/*"
-        className="hidden"
-        onChange={handleVideoFileChange}
-      />
       <div className="h-48 sm:h-56 md:h-64 lg:h-80 rounded-[1.5rem] sm:rounded-[2rem] md:rounded-[2.5rem] relative overflow-hidden mb-16 sm:mb-20 md:mb-24">
         <img
           src={backgroundUrl}
@@ -617,7 +527,10 @@ const ProfileView = ({ role }) => {
           </div>
           <div className="flex gap-2 sm:gap-3 flex-wrap justify-center sm:justify-start mt-3 sm:mt-4">
             {isOwnProfile && user && (
-              <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/profile/edit')}>Edit Profile</Button>
+              <>
+                <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/profile/edit')}>Edit Profile</Button>
+                <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/feed/create')}>Create Post</Button>
+              </>
             )}
             {!isOwnProfile && (
               <>
@@ -694,107 +607,60 @@ const ProfileView = ({ role }) => {
           </div>
         </div>
         <div className="md:col-span-2">
-          <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-4 sm:mb-6 flex items-center gap-2">
-            <Camera size={20} sm={24} className="text-fuchsia-500 flex-shrink-0" />
-            <span>Portfolio Highlights</span>
-          </h3>
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
-            {isOwnProfile && (
-              <>
-                <button
-                  type="button"
-                  onClick={handlePortfolioUploadClick}
-                  disabled={portfolioUploading}
-                  className="bg-white/5 hover:bg-white/10 border-2 border-dashed border-white/20 hover:border-fuchsia-500/50 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed min-h-[150px] sm:min-h-[180px] md:min-h-[220px]"
-                >
-                  {portfolioUploading ? (
-                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <ImagePlus size={24} className="text-fuchsia-400" />
-                      <span className="text-xs text-gray-300">Add Image</span>
-                    </div>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleVideoUploadClick}
-                  disabled={videoUploading}
-                  className="bg-white/5 hover:bg-white/10 border-2 border-dashed border-white/20 hover:border-cyan-500/50 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed min-h-[150px] sm:min-h-[180px] md:min-h-[220px]"
-                >
-                  {videoUploading ? (
-                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <Play size={24} className="text-cyan-400" />
-                      <span className="text-xs text-gray-300">Add Video</span>
-                    </div>
-                  )}
-                </button>
-              </>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-white sm:text-xl md:text-2xl">
+              <Grid3X3 size={20} sm={24} className="text-fuchsia-500 flex-shrink-0" />
+              <span>Posts</span>
+            </h3>
+            {isOwnProfile && user && (
+              <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/feed/create')}>
+                <Plus size={14} />
+                Create Post
+              </Button>
             )}
-            {(() => {
-              const portfolioItems = [];
-              if (profile?.portfolio_images) {
-                profile.portfolio_images.forEach((img) => {
-                  portfolioItems.push({ type: 'image', src: img });
-                });
-              }
-              if (profile?.videos) {
-                profile.videos.forEach((vid) => {
-                  portfolioItems.push({ type: 'video', src: vid });
-                });
-              }
-              
-              return (
-                <>
-                  {portfolioItems.length > 0 && portfolioItems.map((item, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => item.type === 'video' && handleVideoClick(item.src)}
-                      className={`rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden relative group min-h-[150px] sm:min-h-[180px] md:min-h-[220px] flex items-center justify-center border-2 transition-all duration-300 ${item.type === 'video' ? 'border-cyan-500/50 bg-cyan-950/20 cursor-pointer hover:border-cyan-400 hover:shadow-lg hover:shadow-cyan-500/20' : 'border-fuchsia-500/30 bg-gray-800 cursor-default'}`}
-                    >
-                      {item.type === 'image' ? (
-                        <img 
-                          src={item.src} 
-                          className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100" 
-                          alt={`Portfolio ${i + 1}`} 
-                        />
-                      ) : (
-                        <>
-                          <video 
-                            src={item.src} 
-                            className="w-full h-full object-contain opacity-70 group-hover:opacity-100 transition-opacity duration-300"
-                          ></video>
-                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors duration-300"></div>
-                        </>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
-                          {item.type === 'video' ? (
-                            <Play size={16} fill="currentColor" />
-                          ) : (
-                            <Eye size={16} />
-                          )}
-                        </div>
-                      </div>
-                      {item.type === 'video' && (
-                        <div className="absolute top-2 right-2 bg-cyan-500 text-white rounded-full p-1">
-                          <Play size={12} fill="currentColor" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                  {portfolioItems.length === 0 && !isOwnProfile && (
-                    <div className="col-span-2 flex flex-col items-center justify-center p-12 bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl border border-white/5 border-dashed">
-                      <Camera size={48} className="text-gray-600 mb-4" />
-                      <p className="text-gray-400 text-sm text-center">No portfolio items yet</p>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:gap-3">
+            {postsLoading ? (
+              [1, 2, 3, 4, 5, 6].map((item) => (
+                <div key={item} className="aspect-square animate-pulse rounded-xl bg-white/5"></div>
+              ))
+            ) : profilePosts.length > 0 ? (
+              profilePosts.map((post) => (
+                <button
+                  key={post.id}
+                  type="button"
+                  onClick={() => navigate(`/posts/${post.id}`)}
+                  className="group relative aspect-square overflow-hidden rounded-xl bg-white/5 text-left transition-transform duration-300 hover:scale-[1.02] sm:rounded-2xl"
+                >
+                  {post.image_url ? (
+                    <img src={post.image_url} alt="Post" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full w-full items-end bg-linear-to-br from-fuchsia-900/30 to-cyan-900/20 p-3 text-xs text-gray-200 sm:p-4 sm:text-sm">
+                      <span className="line-clamp-4">{post.content}</span>
                     </div>
                   )}
-                </>
-              );
-            })()}
+                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+                  <div className="absolute inset-x-0 bottom-0 p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <p className="line-clamp-2 text-xs text-white sm:text-sm">{post.content}</p>
+                  </div>
+                </button>
+              ))
+            ) : isOwnProfile ? (
+              <button
+                type="button"
+                onClick={() => navigate('/feed/create')}
+                className="col-span-3 flex min-h-55 flex-col items-center justify-center rounded-2xl border border-dashed border-fuchsia-500/30 bg-white/5 p-12 text-center transition-all duration-300 hover:border-fuchsia-400 hover:bg-fuchsia-500/10 sm:rounded-3xl"
+              >
+                <Plus size={32} className="mb-4 text-fuchsia-400" />
+                <p className="text-base font-bold text-white">Create your first post</p>
+                <p className="mt-2 text-sm text-gray-400">Your profile will show posts in a 3-column square grid like Instagram.</p>
+              </button>
+            ) : (
+              <div className="col-span-3 flex min-h-55 flex-col items-center justify-center rounded-2xl border border-white/5 border-dashed bg-white/5 p-12 backdrop-blur-md sm:rounded-3xl">
+                <Camera size={48} className="mb-4 text-gray-600" />
+                <p className="text-center text-sm text-gray-400">No posts yet</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -992,32 +858,6 @@ const ProfileView = ({ role }) => {
                 <span className="text-sm font-semibold text-gray-300 group-hover:text-white text-center">Copy Link</span>
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Video Player Modal */}
-      {showVideoModal && selectedVideo && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={closeVideoModal}
-        >
-          <div
-            className="bg-black/90 rounded-2xl border border-white/10 w-full max-w-3xl shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={closeVideoModal}
-              className="absolute top-3 right-3 z-10 bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors duration-300"
-            >
-              <X size={24} className="text-white" />
-            </button>
-            <video
-              src={selectedVideo}
-              controls
-              autoPlay
-              className="w-full h-auto max-h-[80vh] rounded-2xl"
-            ></video>
           </div>
         </div>
       )}

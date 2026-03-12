@@ -10,7 +10,7 @@ const MobileNav = ({ role }) => {
       <NavItem
         to="/dashboard"
         icon={role === 'artist' ? Calendar : List}
-        label="Bookings"
+        label={role === 'artist' ? 'Bookings' : 'Events'}
         badge={role === 'artist' ? '2' : null}
         isMobile={true}
       />

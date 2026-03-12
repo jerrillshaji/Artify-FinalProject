@@ -505,7 +505,7 @@ const MessagesView = () => {
 
               {/* Message Input */}
               <div className="w-full border-t border-white/10 bg-black/20 p-2 backdrop-blur-md sm:p-4">
-                <div className="flex items-center gap-1 sm:gap-3 bg-[#0a0a0a] border border-white/10 rounded-full px-1.5 sm:px-2 py-1.5 sm:py-2">
+                <div className="flex items-center gap-1 sm:gap-3 bg-[#0a0a0a] border border-white/10 rounded-full px-1.5 sm:px-2 py-1.5 sm:py-2 transition-colors focus-within:border-fuchsia-400/70">
                   <button className="p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white shrink-0 rounded-full sm:p-2">
                     <Paperclip size={16} sm={18} />
                   </button>
@@ -515,7 +515,7 @@ const MessagesView = () => {
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Type a message..."
-                    className="flex-1 bg-transparent border-none focus:ring-0 text-white text-xs sm:text-sm placeholder:text-gray-600 min-w-0"
+                    className="flex-1 bg-transparent border-none outline-none ring-0 focus:outline-none focus:ring-0 focus:border-transparent text-white text-xs sm:text-sm placeholder:text-gray-600 min-w-0"
                   />
                   <button className="p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white shrink-0 rounded-full sm:p-2">
                     <Mic size={16} sm={18} />

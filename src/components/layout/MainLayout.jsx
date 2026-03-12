@@ -11,6 +11,8 @@ import ManagerDashboard from '../../views/ManagerDashboard';
 import MessagesView from '../../views/MessagesView';
 import ProfileView from '../../views/ProfileView';
 import EditProfileView from '../../views/EditProfileView';
+import CreatePostView from '../../views/CreatePostView';
+import PostDetailView from '../../views/PostDetailView';
 
 const SettingsPlaceholder = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -43,6 +45,8 @@ const MainLayout = ({ user, role, onLogout }) => {
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 flex-1 min-h-0 w-full">
             <Routes>
               <Route path="/feed" element={<CommunityFeed />} />
+              <Route path="/feed/create" element={<CreatePostView />} />
+              <Route path="/posts/:postId" element={<PostDetailView />} />
               <Route path="/discover" element={role === 'manager' ? <ManagerDiscovery /> : <ArtistCollaborationView />} />
               <Route path="/dashboard" element={role === 'artist' ? <ArtistDashboard /> : <ManagerDashboard />} />
               <Route path="/messages" element={<MessagesView />} />
