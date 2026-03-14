@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, BellRing, MessageCircle, User, LogOut } from 'lucide-react';
+import { BellRing, User, LogOut, X } from 'lucide-react';
 import { useSupabase } from '../../context/SupabaseContext';
 
 const withCacheBuster = (imageUrl, version) => {
@@ -12,9 +12,209 @@ const withCacheBuster = (imageUrl, version) => {
   return `${imageUrl}${separator}v=${encodeURIComponent(version)}`;
 };
 
+const formatRelativeTime = (timestamp) => {
+  if (!timestamp) return 'just now';
+  const diffMs = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+
+  return new Date(timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
 const Header = ({ user, role, onLogout }) => {
   const navigate = useNavigate();
-  const { profile } = useSupabase();
+  const { profile, supabase, user: authUser } = useSupabase();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [postNotifications, setPostNotifications] = useState([]);
+  const [followedIds, setFollowedIds] = useState([]);
+  const [unreadPostCount, setUnreadPostCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  const activeUserId = authUser?.id || user?.id;
+  const seenPostsStorageKey = useMemo(
+    () => (activeUserId ? `artify_seen_posts_${activeUserId}` : null),
+    [activeUserId]
+  );
+
+  const getSeenAt = useCallback(() => {
+    if (!seenPostsStorageKey) return null;
+    try {
+      return localStorage.getItem(seenPostsStorageKey);
+    } catch {
+      return null;
+    }
+  }, [seenPostsStorageKey]);
+
+  const setSeenAtNow = useCallback(() => {
+    if (!seenPostsStorageKey) return;
+    try {
+      localStorage.setItem(seenPostsStorageKey, new Date().toISOString());
+    } catch {
+      // ignore localStorage write errors
+    }
+  }, [seenPostsStorageKey]);
+
+  const calculateUnreadPosts = useCallback((notifications) => {
+    const seenAt = getSeenAt();
+    if (!seenAt) return notifications.length;
+
+    const seenAtMs = new Date(seenAt).getTime();
+    return notifications.filter((item) => new Date(item.created_at).getTime() > seenAtMs).length;
+  }, [getSeenAt]);
+
+  const loadMessageNotificationCount = useCallback(async () => {
+    if (!activeUserId) {
+      setUnreadMessageCount(0);
+      return;
+    }
+
+    const { count } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('receiver_id', activeUserId)
+      .eq('is_read', false);
+
+    setUnreadMessageCount(count || 0);
+  }, [activeUserId, supabase]);
+
+  const loadPostNotifications = useCallback(async () => {
+    if (!activeUserId) {
+      setPostNotifications([]);
+      setUnreadPostCount(0);
+      return;
+    }
+
+    setNotificationsLoading(true);
+    try {
+      const { data: followsData, error: followsError } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', activeUserId);
+
+      if (followsError) throw followsError;
+
+      const ids = (followsData || []).map((item) => item.following_id);
+      setFollowedIds(ids);
+
+      if (ids.length === 0) {
+        setPostNotifications([]);
+        setUnreadPostCount(0);
+        return;
+      }
+
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          author_id,
+          content,
+          created_at,
+          author:profiles!posts_author_id_fkey (
+            id,
+            username,
+            full_name,
+            avatar_url,
+            updated_at,
+            role,
+            artists (stage_name)
+          )
+        `)
+        .in('author_id', ids)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (postsError) throw postsError;
+
+      const normalized = (postsData || []).map((post) => {
+        const author = post.author;
+        const displayName = author?.role === 'artist'
+          ? (author?.artists?.[0]?.stage_name || author?.full_name || author?.username || 'Artist')
+          : (author?.full_name || author?.username || 'Manager');
+        const avatar = withCacheBuster(author?.avatar_url, author?.updated_at) || `https://i.pravatar.cc/150?u=${post.author_id}`;
+
+        return {
+          ...post,
+          displayName,
+          avatar,
+        };
+      });
+
+      setPostNotifications(normalized);
+      setUnreadPostCount(calculateUnreadPosts(normalized));
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+      setPostNotifications([]);
+      setUnreadPostCount(0);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [activeUserId, calculateUnreadPosts, supabase]);
+
+  const handleOpenNotifications = useCallback(async () => {
+    setShowNotifications(true);
+    await loadPostNotifications();
+  }, [loadPostNotifications]);
+
+  useEffect(() => {
+    loadPostNotifications();
+    loadMessageNotificationCount();
+  }, [loadPostNotifications, loadMessageNotificationCount]);
+
+  useEffect(() => {
+    if (!activeUserId) return undefined;
+
+    // Fallback polling to ensure notifications stay fresh even if realtime events are missed.
+    const timer = window.setInterval(() => {
+      loadPostNotifications();
+      loadMessageNotificationCount();
+    }, 15000);
+
+    return () => window.clearInterval(timer);
+  }, [activeUserId, loadMessageNotificationCount, loadPostNotifications]);
+
+  useEffect(() => {
+    if (!activeUserId) return undefined;
+
+    const postChannel = supabase
+      .channel(`header-post-notify-${activeUserId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
+        const newPost = payload?.new;
+        if (!newPost?.author_id) return;
+        loadPostNotifications();
+      })
+      .subscribe();
+
+    const messageChannel = supabase
+      .channel(`header-message-notify-${activeUserId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${activeUserId}` },
+        () => {
+          loadMessageNotificationCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(postChannel);
+      supabase.removeChannel(messageChannel);
+    };
+  }, [activeUserId, loadMessageNotificationCount, loadPostNotifications, supabase]);
+
+  useEffect(() => {
+    if (!showNotifications) return;
+    setSeenAtNow();
+    setUnreadPostCount(0);
+  }, [setSeenAtNow, showNotifications]);
 
   // Safe access to user data
   const userName = profile?.full_name || user?.user_metadata?.full_name || (role === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.');
@@ -41,9 +241,16 @@ const Header = ({ user, role, onLogout }) => {
       {/* Right side actions */}
       <div className="flex items-center gap-3 sm:gap-6">
         {/* Notifications */}
-        <button className="relative text-gray-400 hover:text-white transition-colors flex-shrink-0">
+        <button
+          onClick={handleOpenNotifications}
+          className="relative text-gray-400 hover:text-white transition-colors flex-shrink-0"
+        >
           <BellRing size={20} sm={24} />
-          <span className="absolute top-0 right-0 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-fuchsia-500 rounded-full border-2 border-black shadow-[0_0_10px_rgba(217,70,239,0.8)]"></span>
+          {unreadPostCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-fuchsia-500 text-[10px] font-bold text-white flex items-center justify-center border border-black shadow-[0_0_10px_rgba(217,70,239,0.8)]">
+              {unreadPostCount > 9 ? '9+' : unreadPostCount}
+            </span>
+          )}
         </button>
 
         {/* Profile dropdown */}
@@ -74,13 +281,6 @@ const Header = ({ user, role, onLogout }) => {
                 <User size={16} />
                 <span>Profile</span>
               </button>
-              <button
-                onClick={() => navigate('/messages')}
-                className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-3"
-              >
-                <MessageCircle size={16} />
-                <span>Messages</span>
-              </button>
               <hr className="border-white/10" />
               <button
                 onClick={onLogout}
@@ -93,6 +293,56 @@ const Header = ({ user, role, onLogout }) => {
           </div>
         </div>
       </div>
+
+      {showNotifications && (
+        <div className="fixed inset-0 z-[70] flex items-start justify-end bg-black/50 p-4 sm:p-6" onClick={() => setShowNotifications(false)}>
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111111] shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5">
+              <h3 className="text-sm sm:text-base font-bold text-white">Notifications</h3>
+              <button
+                onClick={() => setShowNotifications(false)}
+                className="rounded-full p-1.5 text-gray-400 hover:bg-white/10 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto">
+              {notificationsLoading ? (
+                <div className="p-6 text-sm text-gray-400">Loading notifications...</div>
+              ) : postNotifications.length === 0 ? (
+                <div className="p-6 text-sm text-gray-400">No post notifications yet. Follow artists or managers to see updates here.</div>
+              ) : (
+                postNotifications.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setShowNotifications(false);
+                      navigate(`/posts/${item.id}`);
+                    }}
+                    className="w-full border-b border-white/5 px-4 py-3 text-left hover:bg-white/5 sm:px-5"
+                  >
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={item.avatar}
+                        alt={item.displayName}
+                        className="h-10 w-10 rounded-full object-cover border border-white/10"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-gray-200">
+                          <span className="font-bold text-white">{item.displayName}</span> posted a new update.
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-xs text-gray-400">{item.content}</p>
+                        <p className="mt-1 text-[11px] text-gray-500">{formatRelativeTime(item.created_at)}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

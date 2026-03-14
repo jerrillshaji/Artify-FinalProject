@@ -20,7 +20,7 @@ const AuthCallback = () => {
           setStatus('verified');
           // Redirect to feed after successful verification
           setTimeout(() => {
-            navigate('/feed');
+            navigate('/community');
           }, 1500);
         } else {
           setStatus('failed');
@@ -74,3 +74,4 @@ const AuthCallback = () => {
 };
 
 export default AuthCallback;
+

@@ -40,6 +40,8 @@ const ArtistDashboard = () => {
   });
   const [bookings, setBookings] = useState([]);
   const [openGigs, setOpenGigs] = useState([]);
+  const [activeStatKey, setActiveStatKey] = useState(null);
+  const [selectedShowId, setSelectedShowId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [applyingEventId, setApplyingEventId] = useState(null);
@@ -51,7 +53,7 @@ const ArtistDashboard = () => {
     try {
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select('id,event_id,artist_id,organizer_id,status,offer_amount,message,event_date,created_at,events(title,location,venue_name,city,country,event_date,end_date)')
+        .select('id,event_id,artist_id,organizer_id,status,offer_amount,message,event_date,created_at,events(title,location,venue_name,city,country,event_date,end_date,visibility)')
         .eq('artist_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -80,7 +82,8 @@ const ArtistDashboard = () => {
 
       const { data: eventData, error: eventError } = await supabase
         .from('events')
-        .select('id,organizer_id,title,description,event_date,end_date,location,venue_name,city,country,budget_min,budget_max,status')
+        .select('id,organizer_id,title,description,event_date,end_date,location,venue_name,city,country,budget_min,budget_max,status,visibility')
+        .eq('visibility', 'public')
         .eq('status', 'published')
         .order('event_date', { ascending: true });
 
@@ -131,12 +134,86 @@ const ArtistDashboard = () => {
     const upcoming = bookings.filter((item) => item.status === 'accepted' && new Date(item.event_date) > new Date()).length;
 
     return [
-      { label: 'Revenue Potential', value: formatINR(Math.round(totalValue)), icon: IndianRupee, color: 'text-emerald-400', trend: 'All offers' },
-      { label: 'Pending', value: String(pending).padStart(2, '0'), icon: Zap, color: 'text-yellow-400', trend: 'Awaiting action' },
-      { label: 'Upcoming', value: String(upcoming).padStart(2, '0'), icon: TrendingUp, color: 'text-fuchsia-400', trend: 'Future gigs' },
-      { label: 'Accepted', value: String(accepted).padStart(2, '0'), icon: Star, color: 'text-cyan-400', trend: 'Confirmed' },
+      { key: 'revenue', label: 'Revenue Potential', value: formatINR(Math.round(totalValue)), icon: IndianRupee, color: 'text-emerald-400', trend: 'All offers' },
+      { key: 'pending', label: 'Pending', value: String(pending).padStart(2, '0'), icon: Zap, color: 'text-yellow-400', trend: 'Awaiting action' },
+      { key: 'upcoming', label: 'Upcoming', value: String(upcoming).padStart(2, '0'), icon: TrendingUp, color: 'text-fuchsia-400', trend: 'Future gigs' },
+      { key: 'accepted', label: 'Accepted', value: String(accepted).padStart(2, '0'), icon: Star, color: 'text-cyan-400', trend: 'Confirmed' },
     ];
   }, [bookings]);
+
+  const statDetail = useMemo(() => {
+    const now = new Date();
+
+    const mapBookingItem = (item) => ({
+      id: item.id,
+      eventId: item.event_id,
+      primary: item.events?.title || 'Event Offer',
+      secondary: `${item.organizer?.full_name || item.organizer?.username || 'Organizer'} • ${new Date(item.event_date).toLocaleString()}`,
+      amount: formatINR(item.offer_amount || 0),
+      status: item.status,
+    });
+
+    if (activeStatKey === 'revenue') {
+      return {
+        title: 'Revenue Potential Details',
+        items: bookings.map(mapBookingItem),
+      };
+    }
+
+    if (activeStatKey === 'pending') {
+      return {
+        title: 'Pending Offer Details',
+        items: bookings.filter((item) => item.status === 'pending').map(mapBookingItem),
+      };
+    }
+
+    if (activeStatKey === 'upcoming') {
+      return {
+        title: 'Upcoming Show Details',
+        items: bookings
+          .filter((item) => item.status === 'accepted' && new Date(item.event_date) > now)
+          .map(mapBookingItem),
+      };
+    }
+
+    if (activeStatKey === 'accepted') {
+      return {
+        title: 'Accepted Offer Details',
+        items: bookings.filter((item) => item.status === 'accepted').map(mapBookingItem),
+      };
+    }
+
+    return { title: '', items: [] };
+  }, [activeStatKey, bookings]);
+
+  const selectedShowDetail = useMemo(() => {
+    if (!selectedShowId) return null;
+
+    const matchingBookings = bookings.filter((item) => item.event_id === selectedShowId);
+    const primaryBooking = matchingBookings[0] || null;
+    const openGig = openGigs.find((item) => item.id === selectedShowId) || null;
+
+    if (!primaryBooking && !openGig) return null;
+
+    const organizer = primaryBooking?.organizer || openGig?.organizer || null;
+    const title = primaryBooking?.events?.title || openGig?.title || 'Event Offer';
+    const location = primaryBooking?.events?.venue_name || primaryBooking?.events?.location || openGig?.venue_name || openGig?.location || 'Location TBD';
+    const dateValue = primaryBooking?.event_date || openGig?.event_date || null;
+    const budgetValue = primaryBooking?.offer_amount || openGig?.budget_max || openGig?.budget_min || 0;
+
+    return {
+      eventId: selectedShowId,
+      title,
+      location,
+      dateValue,
+      budgetValue,
+      status: primaryBooking?.status || openGig?.status || 'unknown',
+      organizer,
+      pendingCount: matchingBookings.filter((item) => item.status === 'pending').length,
+      acceptedCount: matchingBookings.filter((item) => item.status === 'accepted').length,
+      declinedCount: matchingBookings.filter((item) => item.status === 'declined').length,
+    };
+  }, [bookings, openGigs, selectedShowId]);
 
   const handleBookingStatus = async (bookingId, status) => {
     setUpdatingId(bookingId);
@@ -267,21 +344,100 @@ const ArtistDashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        {bookingStats.map((stat, i) => (
-          <div key={i} className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur-md transition-colors hover:bg-white/10 sm:rounded-3xl sm:p-4 md:p-6">
+        {bookingStats.map((stat) => (
+          <button
+            key={stat.key}
+            type="button"
+            onClick={() => {
+              setActiveStatKey((prev) => (prev === stat.key ? null : stat.key));
+              setSelectedShowId(null);
+            }}
+            className={`group relative overflow-hidden rounded-2xl border p-3 text-left backdrop-blur-md transition-colors hover:bg-white/10 sm:rounded-3xl sm:p-4 md:p-6 ${activeStatKey === stat.key ? 'border-white/20 bg-white/10' : 'border-white/5 bg-white/5'}`}
+          >
             <div className={`absolute right-0 top-0 p-2 opacity-20 transition-opacity duration-500 group-hover:scale-110 group-hover:opacity-100 sm:p-4 ${stat.color}`}><stat.icon size={32} /></div>
             <p className="mb-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 sm:mb-2 sm:text-xs">{stat.label}</p>
             <p className="mb-0.5 text-2xl font-black text-white sm:mb-1 sm:text-3xl">{stat.value}</p>
             <p className={`text-[10px] font-medium sm:text-xs ${stat.color}`}>{stat.trend}</p>
-          </div>
+          </button>
         ))}
       </div>
+
+      {activeStatKey && (
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl sm:rounded-3xl">
+          <div className="flex items-center justify-between border-b border-white/5 p-3 sm:p-4 md:p-6">
+            <h2 className="text-base font-bold text-white sm:text-lg">{statDetail.title}</h2>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveStatKey(null);
+                setSelectedShowId(null);
+              }}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 hover:bg-white/10 sm:text-sm"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="divide-y divide-white/5">
+            {statDetail.items.length > 0 ? (
+              statDetail.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedShowId(item.eventId || null)}
+                  className={`flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5 ${selectedShowId === item.eventId ? 'bg-white/10' : ''}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-white sm:text-base">{item.primary}</p>
+                    <p className="mt-1 text-xs text-gray-400 sm:text-sm">{item.secondary}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-300">{item.status}</span>
+                    <span className="text-sm font-bold text-emerald-300 sm:text-base">{item.amount}</span>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="p-8 text-center text-gray-400">No details available for this metric yet.</div>
+            )}
+          </div>
+
+          {selectedShowDetail && (
+            <div className="border-t border-white/10 p-4 sm:p-6">
+              <h3 className="text-lg font-bold text-white">Show Details</h3>
+              <div className="mt-3 grid gap-2 text-sm text-gray-300 sm:grid-cols-2">
+                <p><span className="text-gray-500">Title:</span> {selectedShowDetail.title}</p>
+                <p><span className="text-gray-500">Status:</span> {selectedShowDetail.status}</p>
+                <p><span className="text-gray-500">Date:</span> {selectedShowDetail.dateValue ? new Date(selectedShowDetail.dateValue).toLocaleString() : 'TBD'}</p>
+                <p><span className="text-gray-500">Location:</span> {selectedShowDetail.location}</p>
+                <p><span className="text-gray-500">Offer/Budget:</span> {formatINR(selectedShowDetail.budgetValue || 0)}</p>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                <p className="text-sm font-bold text-white">Whose Event Is This?</p>
+                <p className="mt-2 text-sm text-cyan-100">
+                  {selectedShowDetail.organizer?.full_name || selectedShowDetail.organizer?.username || 'Organizer'}
+                </p>
+                {selectedShowDetail.organizer ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/messages?userId=${selectedShowDetail.organizer.id}`)}
+                    className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-200 hover:bg-white/10 sm:text-sm"
+                  >
+                    Message Organizer
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {viewMode === 'list' ? (
         <>
           <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/5 backdrop-blur-xl sm:rounded-3xl">
             <div className="flex items-center justify-between border-b border-white/5 p-3 sm:p-4 md:p-6">
-              <h2 className="flex items-center gap-2 text-base font-bold text-white sm:text-lg"><div className="h-1.5 w-1.5 animate-pulse rounded-full bg-fuchsia-500 sm:h-2 sm:w-2"></div><span className="hidden sm:inline">Incoming Bookings</span><span className="sm:hidden">Bookings</span></h2>
+              <h2 className="flex items-center gap-2 text-base font-bold text-white sm:text-lg"><div className="h-1.5 w-1.5 animate-pulse rounded-full bg-fuchsia-500 sm:h-2 sm:w-2"></div><span className="hidden sm:inline">My Invitations And Requests</span><span className="sm:hidden">My Requests</span></h2>
               <Badge color="gray">{bookings.filter((item) => item.status === 'pending').length} Pending</Badge>
             </div>
             <div className="divide-y divide-white/5">
@@ -309,7 +465,22 @@ const ArtistDashboard = () => {
                   <div className="flex gap-2 sm:gap-3">
                     <button onClick={() => handleBookingStatus(req.id, 'declined')} disabled={updatingId === req.id || req.status !== 'pending'} className="flex-shrink-0 rounded-lg border border-white/5 bg-white/5 p-2 text-gray-400 transition-all hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50 sm:rounded-xl sm:p-3"><X size={16} /></button>
                     <button onClick={() => navigate(`/messages?userId=${req.organizer_id}`)} className="flex-shrink-0 rounded-lg border border-white/5 bg-white/5 p-2 text-gray-400 transition-all hover:bg-white/10 hover:text-white sm:rounded-xl sm:p-3"><MessageCircle size={16} /></button>
-                    <button onClick={() => handleBookingStatus(req.id, 'accepted')} disabled={updatingId === req.id || req.status !== 'pending'} className="flex-shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-bold text-black transition-all hover:bg-fuchsia-400 hover:text-white hover:shadow-[0_0_20px_rgba(192,38,211,0.5)] disabled:opacity-50 sm:rounded-xl sm:px-5 sm:py-3 sm:text-sm"><span className="inline-flex items-center gap-1"><Check size={14} /> Accept</span></button>
+                    <button
+                      onClick={() => handleBookingStatus(req.id, 'accepted')}
+                      disabled={updatingId === req.id || req.status !== 'pending'}
+                      className={`flex-shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition-all sm:rounded-xl sm:px-5 sm:py-3 sm:text-sm ${
+                        req.status === 'accepted'
+                          ? 'cursor-default border border-fuchsia-400/40 bg-fuchsia-500/20 text-fuchsia-100'
+                          : req.status === 'pending'
+                            ? 'bg-white text-black hover:bg-fuchsia-400 hover:text-white hover:shadow-[0_0_20px_rgba(192,38,211,0.5)]'
+                            : 'border border-white/10 bg-white/5 text-gray-300'
+                      } disabled:opacity-70`}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        <Check size={14} />
+                        {updatingId === req.id ? 'Saving...' : req.status === 'accepted' ? 'Accepted' : req.status === 'declined' ? 'Declined' : 'Accept'}
+                      </span>
+                    </button>
                   </div>
                 </div>
               )) : <div className="p-10 text-center text-gray-400">No booking offers yet.</div>}

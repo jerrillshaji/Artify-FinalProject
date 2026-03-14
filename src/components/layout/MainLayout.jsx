@@ -4,6 +4,7 @@ import Header from '../layout/Header';
 import Sidebar from '../layout/Sidebar';
 import MobileNav from '../layout/MobileNav';
 import CommunityFeed from '../../views/CommunityFeed';
+import FeedOffersView from '../../views/FeedOffersView';
 import ManagerDiscovery from '../../views/ManagerDiscovery';
 import ArtistCollaborationView from '../../views/ArtistCollaborationView';
 import ArtistDashboard from '../../views/ArtistDashboard';
@@ -44,8 +45,10 @@ const MainLayout = ({ user, role, onLogout }) => {
         <main className="mx-auto flex min-h-0 w-full max-w-full flex-1 flex-col px-3 pt-3 pb-28 sm:px-4 sm:pt-4 md:ml-28 md:px-6 md:py-6 lg:px-8">
           <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 flex-1 min-h-0 w-full">
             <Routes>
-              <Route path="/feed" element={<CommunityFeed />} />
-              <Route path="/feed/create" element={<CreatePostView />} />
+              <Route path="/community" element={<CommunityFeed />} />
+              <Route path="/community/create" element={<CreatePostView />} />
+              <Route path="/feed" element={<FeedOffersView />} />
+              <Route path="/feed/create" element={<Navigate to="/community/create" replace />} />
               <Route path="/posts/:postId" element={<PostDetailView />} />
               <Route path="/discover" element={role === 'manager' ? <ManagerDiscovery /> : <ArtistCollaborationView />} />
               <Route path="/dashboard" element={role === 'artist' ? <ArtistDashboard /> : <ManagerDashboard />} />
@@ -54,7 +57,7 @@ const MainLayout = ({ user, role, onLogout }) => {
               <Route path="/profile" element={<ProfileView role={role} />} />
               <Route path="/:username" element={<ProfileView role={role} />} />
               <Route path="/settings" element={<SettingsPlaceholder />} />
-              <Route path="*" element={<Navigate to="/feed" replace />} />
+              <Route path="*" element={<Navigate to="/community" replace />} />
             </Routes>
           </div>
         </main>

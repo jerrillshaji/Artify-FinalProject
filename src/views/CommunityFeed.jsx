@@ -352,7 +352,7 @@ const CommunityFeed = () => {
               <p className="mt-2 text-2xl font-black text-white">{feedPosts.length}</p>
             </div>
           </div>
-          <Button className="mt-auto w-full" onClick={() => navigate('/feed/create')}>
+          <Button className="mt-auto w-full" onClick={() => navigate('/community/create')}>
             <Plus size={16} />
             Create Post
           </Button>
@@ -424,7 +424,7 @@ const CommunityFeed = () => {
               Follow more artists or managers to build your feed, or publish your own update now and start the momentum.
             </p>
             <div className="mt-5 flex justify-center">
-              <Button onClick={() => navigate('/feed/create')}>
+              <Button onClick={() => navigate('/community/create')}>
                 <Plus size={16} />
                 Create Your First Post
               </Button>

@@ -542,7 +542,7 @@ const ProfileView = ({ role }) => {
             {isOwnProfile && user && (
               <>
                 <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/profile/edit')}>Edit Profile</Button>
-                <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/feed/create')}>Create Post</Button>
+                <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/community/create')}>Create Post</Button>
               </>
             )}
             {!isOwnProfile && (
@@ -645,7 +645,7 @@ const ProfileView = ({ role }) => {
               <span>Posts</span>
             </h3>
             {isOwnProfile && user && (
-              <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/feed/create')}>
+              <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/community/create')}>
                 <Plus size={14} />
                 Create Post
               </Button>
@@ -680,7 +680,7 @@ const ProfileView = ({ role }) => {
             ) : isOwnProfile ? (
               <button
                 type="button"
-                onClick={() => navigate('/feed/create')}
+                onClick={() => navigate('/community/create')}
                 className="col-span-3 flex min-h-55 flex-col items-center justify-center rounded-2xl border border-dashed border-fuchsia-500/30 bg-white/5 p-12 text-center transition-all duration-300 hover:border-fuchsia-400 hover:bg-fuchsia-500/10 sm:rounded-3xl"
               >
                 <Plus size={32} className="mb-4 text-fuchsia-400" />

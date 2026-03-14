@@ -30,13 +30,27 @@ const ManagerDashboard = () => {
   const [events, setEvents] = useState([]);
   const [artists, setArtists] = useState([]);
   const [incomingRequests, setIncomingRequests] = useState([]);
+  const [bookingDetails, setBookingDetails] = useState([]);
+  const [activeStatKey, setActiveStatKey] = useState(null);
+  const [selectedShowId, setSelectedShowId] = useState(null);
+  const [managerSummary, setManagerSummary] = useState({
+    plannedBudget: 0,
+    eventCount: 0,
+    thisMonthCount: 0,
+    pendingOffers: 0,
+    acceptedOffers: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
   const [creating, setCreating] = useState(false);
   const [respondingRequestId, setRespondingRequestId] = useState(null);
+  const [closingEventId, setClosingEventId] = useState(null);
+  const [deletingEventId, setDeletingEventId] = useState(null);
   const [formError, setFormError] = useState('');
   const [artistSearch, setArtistSearch] = useState('');
   const [form, setForm] = useState({
+    visibility: 'public',
     title: '',
     description: '',
     location: '',
@@ -75,7 +89,7 @@ const ManagerDashboard = () => {
       const [eventsResult, artistsResult] = await Promise.all([
         supabase
           .from('events')
-          .select('id,title,event_date,end_date,location,status,budget_min,budget_max,venue_name,city,country')
+          .select('id,title,description,event_date,end_date,location,status,visibility,budget_min,budget_max,venue_name,city,country,required_roles')
           .eq('organizer_id', user.id)
           .order('event_date', { ascending: true }),
         supabase
@@ -98,6 +112,45 @@ const ManagerDashboard = () => {
       if (bookingResult.error) throw bookingResult.error;
 
       const bookings = bookingResult.data || [];
+      const trackedEvents = eventRows.filter((eventItem) => eventItem.status === 'published' || eventItem.status === 'completed');
+      const now = new Date();
+
+      const thisMonthCount = trackedEvents.filter((eventItem) => {
+        const date = new Date(eventItem.event_date);
+        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      }).length;
+
+      const plannedBudget = trackedEvents.reduce((sum, eventItem) => sum + Number(eventItem.budget_max || eventItem.budget_min || 0), 0);
+      const pendingOffers = bookings.filter((booking) => booking.status === 'pending').length;
+      const acceptedOffers = bookings.filter((booking) => booking.status === 'accepted').length;
+
+      const bookingArtistIds = [...new Set(bookings.map((booking) => booking.artist_id).filter(Boolean))];
+      let bookingArtistMap = new Map();
+      if (bookingArtistIds.length > 0) {
+        const { data: bookingArtistProfiles, error: bookingArtistError } = await supabase
+          .from('profiles')
+          .select('id,full_name,username,avatar_url')
+          .in('id', bookingArtistIds);
+
+        if (bookingArtistError) throw bookingArtistError;
+        bookingArtistMap = new Map((bookingArtistProfiles || []).map((item) => [item.id, item]));
+      }
+
+      const enrichedBookings = bookings.map((booking) => ({
+        ...booking,
+        artistProfile: bookingArtistMap.get(booking.artist_id) || null,
+      }));
+
+      setBookingDetails(enrichedBookings);
+
+      setManagerSummary({
+        plannedBudget,
+        eventCount: trackedEvents.length,
+        thisMonthCount,
+        pendingOffers,
+        acceptedOffers,
+      });
+
       const countsByEvent = bookings.reduce((acc, booking) => {
         if (!acc[booking.event_id]) {
           acc[booking.event_id] = { pending: 0, accepted: 0, declined: 0 };
@@ -115,26 +168,16 @@ const ManagerDashboard = () => {
 
       setEvents(enriched);
 
-      const pendingArtistRequests = bookings
-        .filter((booking) => booking.status === 'pending' && (booking.message || '').toLowerCase().includes('artist requested'))
+      const pendingArtistRequests = enrichedBookings
+        .filter((booking) => {
+          if (booking.status !== 'pending') return false;
+          const messageText = (booking.message || '').toLowerCase();
+          return messageText.includes('artist requested') || messageText.includes('ready for this gig');
+        })
         .sort((left, right) => new Date(left.event_date) - new Date(right.event_date));
-
-      const artistIdsFromRequests = [...new Set(pendingArtistRequests.map((booking) => booking.artist_id))];
-      let artistNameMap = new Map();
-
-      if (artistIdsFromRequests.length > 0) {
-        const { data: requestArtistProfiles, error: requestArtistsError } = await supabase
-          .from('profiles')
-          .select('id,full_name,username,avatar_url')
-          .in('id', artistIdsFromRequests);
-
-        if (requestArtistsError) throw requestArtistsError;
-        artistNameMap = new Map((requestArtistProfiles || []).map((item) => [item.id, item]));
-      }
 
       setIncomingRequests(pendingArtistRequests.map((item) => ({
         ...item,
-        artistProfile: artistNameMap.get(item.artist_id) || null,
       })));
       setArtists(artistsResult.data || []);
     } catch (error) {
@@ -142,6 +185,14 @@ const ManagerDashboard = () => {
       setEvents([]);
       setIncomingRequests([]);
       setArtists([]);
+      setBookingDetails([]);
+      setManagerSummary({
+        plannedBudget: 0,
+        eventCount: 0,
+        thisMonthCount: 0,
+        pendingOffers: 0,
+        acceptedOffers: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -152,23 +203,82 @@ const ManagerDashboard = () => {
   }, [supabase, user?.id]);
 
   const managerStats = useMemo(() => {
-    const now = new Date();
-    const thisMonth = events.filter((eventItem) => {
-      const date = new Date(eventItem.event_date);
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    });
-
-    const pendingOffers = events.reduce((sum, eventItem) => sum + (eventItem.offers?.pending || 0), 0);
-    const acceptedOffers = events.reduce((sum, eventItem) => sum + (eventItem.offers?.accepted || 0), 0);
-    const totalBudget = events.reduce((sum, eventItem) => sum + Number(eventItem.budget_max || eventItem.budget_min || 0), 0);
-
     return [
-      { label: 'Budget Planned', value: formatINR(Math.round(totalBudget)), icon: IndianRupee, color: 'text-emerald-400', trend: 'Across Events' },
-      { label: 'Events', value: String(events.length).padStart(2, '0'), icon: Calendar, color: 'text-fuchsia-400', trend: `${thisMonth.length} this month` },
-      { label: 'Pending Offers', value: String(pendingOffers).padStart(2, '0'), icon: Clock, color: 'text-yellow-400', trend: 'Awaiting response' },
-      { label: 'Accepted', value: String(acceptedOffers).padStart(2, '0'), icon: Users, color: 'text-cyan-400', trend: 'Booked artists' },
+      { key: 'budget', label: 'Budget Planned', value: formatINR(Math.round(managerSummary.plannedBudget || 0)), icon: IndianRupee, color: 'text-emerald-400', trend: 'Across active events' },
+      { key: 'events', label: 'Events', value: String(managerSummary.eventCount).padStart(2, '0'), icon: Calendar, color: 'text-fuchsia-400', trend: `${managerSummary.thisMonthCount} this month` },
+      { key: 'pending', label: 'Pending Offers', value: String(managerSummary.pendingOffers).padStart(2, '0'), icon: Clock, color: 'text-yellow-400', trend: 'Awaiting response' },
+      { key: 'accepted', label: 'Accepted', value: String(managerSummary.acceptedOffers).padStart(2, '0'), icon: Users, color: 'text-cyan-400', trend: 'Booked artists' },
     ];
-  }, [events]);
+  }, [managerSummary]);
+
+  const statDetail = useMemo(() => {
+    const trackedEvents = events.filter((eventItem) => eventItem.status === 'published' || eventItem.status === 'completed');
+
+    if (activeStatKey === 'budget') {
+      return {
+        title: 'Budget Planned Details',
+        items: trackedEvents.map((eventItem) => ({
+          id: eventItem.id,
+          eventId: eventItem.id,
+          primary: eventItem.title || 'Untitled Event',
+          secondary: `${new Date(eventItem.event_date).toLocaleString()} • ${eventItem.location || 'Location TBD'}`,
+          amount: formatINR(eventItem.budget_max || eventItem.budget_min || 0),
+          status: eventItem.status,
+        })),
+      };
+    }
+
+    if (activeStatKey === 'events') {
+      return {
+        title: 'Event Details',
+        items: trackedEvents.map((eventItem) => ({
+          id: eventItem.id,
+          eventId: eventItem.id,
+          primary: eventItem.title || 'Untitled Event',
+          secondary: `${new Date(eventItem.event_date).toLocaleString()} • ${eventItem.location || 'Location TBD'}`,
+          amount: formatINR(eventItem.budget_max || eventItem.budget_min || 0),
+          status: eventItem.status,
+        })),
+      };
+    }
+
+    if (activeStatKey === 'pending' || activeStatKey === 'accepted') {
+      const targetStatus = activeStatKey === 'pending' ? 'pending' : 'accepted';
+      const filtered = bookingDetails.filter((booking) => booking.status === targetStatus);
+
+      return {
+        title: targetStatus === 'pending' ? 'Pending Offer Details' : 'Accepted Offer Details',
+        items: filtered.map((booking) => ({
+          id: booking.id,
+          eventId: booking.event_id,
+          primary: booking.events?.title || 'Event Offer',
+          secondary: `${booking.artistProfile?.full_name || booking.artistProfile?.username || 'Artist'} • ${new Date(booking.event_date).toLocaleString()}`,
+          amount: formatINR(booking.offer_amount || 0),
+          status: booking.status,
+        })),
+      };
+    }
+
+    return { title: '', items: [] };
+  }, [activeStatKey, bookingDetails, events]);
+
+  const selectedShowDetail = useMemo(() => {
+    if (!selectedShowId) return null;
+
+    const eventItem = events.find((item) => item.id === selectedShowId);
+    if (!eventItem) return null;
+
+    const bookingsForShow = bookingDetails.filter((booking) => booking.event_id === selectedShowId);
+    const acceptedArtists = bookingsForShow.filter((booking) => booking.status === 'accepted');
+
+    return {
+      event: eventItem,
+      totalRequests: bookingsForShow.length,
+      acceptedCount: acceptedArtists.length,
+      pendingCount: bookingsForShow.filter((booking) => booking.status === 'pending').length,
+      bookedArtists: acceptedArtists,
+    };
+  }, [bookingDetails, events, selectedShowId]);
 
   const toIsoStart = (dateValue, timeValue) => {
     const localDate = new Date(`${dateValue}T${timeValue}`);
@@ -176,9 +286,29 @@ const ManagerDashboard = () => {
     return localDate.toISOString();
   };
 
+  const toDateInputValue = (isoValue) => {
+    if (!isoValue) return '';
+    const date = new Date(isoValue);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const toTimeInputValue = (isoValue) => {
+    if (!isoValue) return '';
+    const date = new Date(isoValue);
+    if (Number.isNaN(date.getTime())) return '';
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   const resetForm = () => {
     setArtistSearch('');
     setForm({
+      visibility: 'public',
       title: '',
       description: '',
       location: '',
@@ -193,6 +323,35 @@ const ManagerDashboard = () => {
       message: '',
       roleNeeded: 'performer',
     });
+  };
+
+  const handleEditEvent = (eventItem) => {
+    const startDate = eventItem?.event_date ? new Date(eventItem.event_date) : null;
+    const endDate = eventItem?.end_date ? new Date(eventItem.end_date) : null;
+    const durationHours = startDate && endDate && endDate > startDate
+      ? String(Math.max(1, Number(((endDate - startDate) / (1000 * 60 * 60)).toFixed(1))))
+      : '2';
+
+    setEditingEventId(eventItem.id);
+    setFormError('');
+    setArtistSearch('');
+    setForm({
+      visibility: eventItem.visibility || 'public',
+      title: eventItem.title || '',
+      description: eventItem.description || '',
+      location: eventItem.location || '',
+      venueName: eventItem.venue_name || '',
+      city: eventItem.city || '',
+      country: eventItem.country || '',
+      date: toDateInputValue(eventItem.event_date),
+      time: toTimeInputValue(eventItem.event_date),
+      durationHours,
+      amount: String(eventItem.budget_max || eventItem.budget_min || ''),
+      artistIds: [],
+      message: '',
+      roleNeeded: eventItem.required_roles?.[0] || 'performer',
+    });
+    setShowCreateModal(true);
   };
 
   const toggleArtist = (artistId) => {
@@ -215,9 +374,15 @@ const ManagerDashboard = () => {
     const startIso = toIsoStart(form.date, form.time);
     const duration = Number(form.durationHours);
     const amount = Number(form.amount);
+    const isPrivateInvite = form.visibility === 'private';
 
-    if (!form.title.trim() || !form.location.trim() || !startIso || form.artistIds.length === 0 || form.artistIds.length > 5 || !duration || !amount) {
-      setFormError('Please fill all required fields and select 1 to 5 artists.');
+    if (!form.title.trim() || !form.location.trim() || !startIso || !duration || !amount) {
+      setFormError('Please fill all required fields.');
+      return;
+    }
+
+    if (isPrivateInvite && (form.artistIds.length === 0 || form.artistIds.length > 5)) {
+      setFormError('For private invitations, select 1 to 5 artists.');
       return;
     }
 
@@ -227,6 +392,35 @@ const ManagerDashboard = () => {
     try {
       const startDate = new Date(startIso);
       const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000).toISOString();
+
+      if (editingEventId) {
+        const { error: updateError } = await supabase
+          .from('events')
+          .update({
+            title: form.title.trim(),
+            description: form.description.trim() || null,
+            event_date: startIso,
+            end_date: endDate,
+            location: form.location.trim(),
+            venue_name: form.venueName.trim() || null,
+            city: form.city.trim() || null,
+            country: form.country.trim() || null,
+            budget_min: amount,
+            budget_max: amount,
+            required_roles: [form.roleNeeded.trim()],
+            visibility: form.visibility,
+          })
+          .eq('id', editingEventId)
+          .eq('organizer_id', user.id);
+
+        if (updateError) throw updateError;
+
+        setShowCreateModal(false);
+        setEditingEventId(null);
+        resetForm();
+        await loadManagerData();
+        return;
+      }
 
       const { data: eventData, error: eventError } = await supabase
         .from('events')
@@ -243,6 +437,7 @@ const ManagerDashboard = () => {
           budget_min: amount,
           budget_max: amount,
           status: 'published',
+          visibility: form.visibility,
           required_roles: [form.roleNeeded.trim()],
         })
         .select('id,event_date,title,location')
@@ -250,51 +445,54 @@ const ManagerDashboard = () => {
 
       if (eventError) throw eventError;
 
-      const bookingRows = form.artistIds.map((artistId) => ({
-        event_id: eventData.id,
-        artist_id: artistId,
-        organizer_id: user.id,
-        status: 'pending',
-        offer_amount: amount,
-        message: form.message.trim() || null,
-        event_date: eventData.event_date,
-      }));
+      if (isPrivateInvite) {
+        const bookingRows = form.artistIds.map((artistId) => ({
+          event_id: eventData.id,
+          artist_id: artistId,
+          organizer_id: user.id,
+          status: 'pending',
+          offer_amount: amount,
+          message: form.message.trim() || null,
+          event_date: eventData.event_date,
+        }));
 
-      const { data: insertedBookings, error: bookingError } = await supabase
-        .from('bookings')
-        .insert(bookingRows)
-        .select('id,artist_id,event_date,offer_amount');
+        const { data: insertedBookings, error: bookingError } = await supabase
+          .from('bookings')
+          .insert(bookingRows)
+          .select('id,artist_id,event_date,offer_amount');
 
-      if (bookingError) throw bookingError;
+        if (bookingError) throw bookingError;
 
-      const messageRows = await Promise.all((insertedBookings || []).map(async (booking) => {
-        const key = await generateKey(user.id, booking.artist_id);
-        const payload = createBookingChatPayload({
-          bookingId: booking.id,
-          title: eventData.title,
-          location: eventData.location,
-          amount: booking.offer_amount,
-          eventDate: booking.event_date,
-          source: 'organizer_offer',
-        });
-        const extraMessage = form.message.trim();
-        const messageText = extraMessage ? `${payload}::${extraMessage}` : payload;
-        const encryptedContent = await encryptMessage(messageText, key);
+        const messageRows = await Promise.all((insertedBookings || []).map(async (booking) => {
+          const key = await generateKey(user.id, booking.artist_id);
+          const payload = createBookingChatPayload({
+            bookingId: booking.id,
+            title: eventData.title,
+            location: eventData.location,
+            amount: booking.offer_amount,
+            eventDate: booking.event_date,
+            source: 'organizer_offer',
+          });
+          const extraMessage = form.message.trim();
+          const messageText = extraMessage ? `${payload}::${extraMessage}` : payload;
+          const encryptedContent = await encryptMessage(messageText, key);
 
-        return {
-          sender_id: user.id,
-          receiver_id: booking.artist_id,
-          content: encryptedContent,
-          is_read: false,
-        };
-      }));
+          return {
+            sender_id: user.id,
+            receiver_id: booking.artist_id,
+            content: encryptedContent,
+            is_read: false,
+          };
+        }));
 
-      if (messageRows.length > 0) {
-        const { error: messageError } = await supabase.from('messages').insert(messageRows);
-        if (messageError) throw messageError;
+        if (messageRows.length > 0) {
+          const { error: messageError } = await supabase.from('messages').insert(messageRows);
+          if (messageError) throw messageError;
+        }
       }
 
       setShowCreateModal(false);
+      setEditingEventId(null);
       resetForm();
       await loadManagerData();
     } catch (error) {
@@ -344,6 +542,64 @@ const ManagerDashboard = () => {
     }
   };
 
+  const handleCloseEvent = async (eventItem) => {
+    if (!eventItem?.id || !user?.id || closingEventId) return;
+    if (eventItem.status !== 'published') {
+      setFormError('Only published events can be closed.');
+      return;
+    }
+    if ((eventItem.offers?.accepted || 0) === 0) {
+      setFormError('Accept at least one artist before closing this event.');
+      return;
+    }
+
+    setClosingEventId(eventItem.id);
+    setFormError('');
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({ status: 'completed' })
+        .eq('id', eventItem.id)
+        .eq('organizer_id', user.id)
+        .eq('status', 'published');
+
+      if (error) throw error;
+
+      await loadManagerData();
+    } catch (error) {
+      console.error('Error closing event:', error);
+      setFormError(error.message || 'Could not close this event.');
+    } finally {
+      setClosingEventId(null);
+    }
+  };
+
+  const handleDeleteEvent = async (eventItem) => {
+    if (!eventItem?.id || !user?.id || deletingEventId) return;
+
+    const shouldDelete = window.confirm(`Delete "${eventItem.title}"? This will also remove related bookings.`);
+    if (!shouldDelete) return;
+
+    setDeletingEventId(eventItem.id);
+    setFormError('');
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', eventItem.id)
+        .eq('organizer_id', user.id);
+
+      if (error) throw error;
+
+      await loadManagerData();
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      setFormError(error.message || 'Could not delete this event.');
+    } finally {
+      setDeletingEventId(null);
+    }
+  };
+
   return (
     <div className="space-y-4 pb-12 sm:space-y-6 md:space-y-8">
       <div className="mb-4 flex items-center sm:mb-6">
@@ -353,7 +609,7 @@ const ManagerDashboard = () => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">Event Command</h1>
-          <p className="text-sm text-gray-400 sm:text-base">Create event gigs and send booking offers directly to up to 5 artists.</p>
+          <p className="text-sm text-gray-400 sm:text-base">Create public gigs for the feed or private invitations for selected artists.</p>
         </div>
         <Button className="self-start px-3 text-xs sm:px-5 sm:text-sm" onClick={() => setShowCreateModal(true)}>
           <Zap size={16} />
@@ -363,17 +619,100 @@ const ManagerDashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        {managerStats.map((stat, i) => (
-          <div key={i} className="group relative overflow-hidden rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur-md transition-colors hover:bg-white/10 sm:rounded-3xl sm:p-4 md:p-6">
+        {managerStats.map((stat) => (
+          <button
+            key={stat.key}
+            type="button"
+            onClick={() => {
+              setActiveStatKey((prev) => (prev === stat.key ? null : stat.key));
+              setSelectedShowId(null);
+            }}
+            className={`group relative overflow-hidden rounded-2xl border p-3 text-left backdrop-blur-md transition-colors hover:bg-white/10 sm:rounded-3xl sm:p-4 md:p-6 ${activeStatKey === stat.key ? 'border-white/20 bg-white/10' : 'border-white/5 bg-white/5'}`}
+          >
             <div className={`absolute right-0 top-0 p-2 opacity-20 transition-opacity duration-500 group-hover:scale-110 group-hover:opacity-100 sm:p-4 ${stat.color}`}>
               <stat.icon size={32} />
             </div>
             <p className="mb-1 text-[9px] font-bold uppercase tracking-widest text-gray-500 sm:mb-2 sm:text-xs">{stat.label}</p>
             <p className="mb-0.5 text-2xl font-black text-white sm:mb-1 sm:text-3xl">{stat.value}</p>
             <p className={`text-[10px] font-medium sm:text-xs ${stat.color}`}>{stat.trend}</p>
-          </div>
+          </button>
         ))}
       </div>
+
+      {activeStatKey && (
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl sm:rounded-3xl">
+          <div className="flex items-center justify-between border-b border-white/5 p-3 sm:p-4 md:p-6">
+            <h2 className="text-base font-bold text-white sm:text-lg">{statDetail.title}</h2>
+            <Button
+              type="button"
+              variant="secondary"
+              className="px-3 py-1.5 text-xs sm:text-sm"
+              onClick={() => {
+                setActiveStatKey(null);
+                setSelectedShowId(null);
+              }}
+            >
+              Close
+            </Button>
+          </div>
+
+          <div className="divide-y divide-white/5">
+            {statDetail.items.length > 0 ? (
+              statDetail.items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedShowId(item.eventId || null)}
+                  className={`flex w-full flex-col gap-2 p-4 text-left transition-colors hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5 ${selectedShowId === item.eventId ? 'bg-white/10' : ''}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-white sm:text-base">{item.primary}</p>
+                    <p className="mt-1 text-xs text-gray-400 sm:text-sm">{item.secondary}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-300">{item.status}</span>
+                    <span className="text-sm font-bold text-emerald-300 sm:text-base">{item.amount}</span>
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="p-8 text-center text-gray-400">No details available for this metric yet.</div>
+            )}
+          </div>
+
+          {selectedShowDetail && (
+            <div className="border-t border-white/10 p-4 sm:p-6">
+              <h3 className="text-lg font-bold text-white">Show Details</h3>
+              <div className="mt-3 grid gap-2 text-sm text-gray-300 sm:grid-cols-2">
+                <p><span className="text-gray-500">Title:</span> {selectedShowDetail.event.title || 'Untitled Event'}</p>
+                <p><span className="text-gray-500">Status:</span> {selectedShowDetail.event.status}</p>
+                <p><span className="text-gray-500">Date:</span> {new Date(selectedShowDetail.event.event_date).toLocaleString()}</p>
+                <p><span className="text-gray-500">Location:</span> {selectedShowDetail.event.venue_name || selectedShowDetail.event.location || 'TBD'}</p>
+                <p><span className="text-gray-500">Budget:</span> {formatINR(selectedShowDetail.event.budget_max || selectedShowDetail.event.budget_min || 0)}</p>
+                <p><span className="text-gray-500">Requests:</span> {selectedShowDetail.totalRequests} total, {selectedShowDetail.pendingCount} pending</p>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-sm font-bold text-white">Booked Artists ({selectedShowDetail.acceptedCount})</p>
+                {selectedShowDetail.bookedArtists.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {selectedShowDetail.bookedArtists.map((booking) => (
+                      <div key={booking.id} className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                        <p className="truncate text-sm text-emerald-100">
+                          {booking.artistProfile?.full_name || booking.artistProfile?.username || 'Artist'}
+                        </p>
+                        <span className="text-xs font-bold text-emerald-300">{formatINR(booking.offer_amount || 0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-400">No artist has been booked for this show yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/5 backdrop-blur-xl sm:rounded-3xl">
         <div className="flex items-center justify-between border-b border-white/5 p-3 sm:p-4 md:p-6">
@@ -399,7 +738,12 @@ const ManagerDashboard = () => {
                     <p className="mt-1 text-xs text-gray-400 sm:text-sm">{new Date(eventItem.event_date).toLocaleString()} • {eventItem.venue_name || eventItem.location}</p>
                     <p className="mt-1 text-xs text-gray-500 sm:text-sm">{eventItem.city || ''}{eventItem.city && eventItem.country ? ', ' : ''}{eventItem.country || ''}</p>
                   </div>
-                  <span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-fuchsia-300">{eventItem.status}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-fuchsia-300">{eventItem.status}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${eventItem.visibility === 'private' ? 'border border-amber-400/30 bg-amber-500/10 text-amber-200' : 'border border-cyan-500/30 bg-cyan-500/10 text-cyan-200'}`}>
+                      {eventItem.visibility === 'private' ? 'private' : 'public'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-xs sm:gap-3 sm:text-sm">
@@ -414,6 +758,42 @@ const ManagerDashboard = () => {
                   <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <p className="text-gray-500">Accepted</p>
                     <p className="font-bold text-emerald-300">{eventItem.offers.accepted}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="px-3 py-1.5 text-xs sm:text-sm"
+                      onClick={() => handleEditEvent(eventItem)}
+                    >
+                      Edit Gig
+                    </Button>
+                    <Button
+                      type="button"
+                      className="px-3 py-1.5 text-xs sm:text-sm"
+                      onClick={() => handleCloseEvent(eventItem)}
+                      disabled={closingEventId === eventItem.id || deletingEventId === eventItem.id || eventItem.status === 'completed'}
+                    >
+                      {closingEventId === eventItem.id
+                        ? 'Closing...'
+                        : eventItem.status === 'completed'
+                          ? 'Closed'
+                          : (eventItem.offers?.accepted || 0) === 0
+                            ? 'Close Event (Accept artist first)'
+                            : 'Close Event'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      className="px-3 py-1.5 text-xs sm:text-sm"
+                      onClick={() => handleDeleteEvent(eventItem)}
+                      disabled={deletingEventId === eventItem.id || closingEventId === eventItem.id}
+                    >
+                      {deletingEventId === eventItem.id ? 'Deleting...' : 'Delete Gig'}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -487,10 +867,10 @@ const ManagerDashboard = () => {
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-[#111111] p-5 sm:p-6">
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.3em] text-fuchsia-300">New Gig Event</p>
-                <h3 className="mt-1 text-2xl font-black text-white">Create Event And Send Offers</h3>
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-fuchsia-300">{editingEventId ? 'Edit Gig Event' : 'New Gig Event'}</p>
+                <h3 className="mt-1 text-2xl font-black text-white">{editingEventId ? 'Update Gig Details' : 'Create Event And Send Offers'}</h3>
               </div>
-              <button onClick={() => setShowCreateModal(false)} className="rounded-full p-2 text-white hover:bg-white/10">
+              <button onClick={() => { setShowCreateModal(false); setEditingEventId(null); }} className="rounded-full p-2 text-white hover:bg-white/10">
                 <X size={18} />
               </button>
             </div>
@@ -501,6 +881,31 @@ const ManagerDashboard = () => {
                   <span className="mb-2 block text-sm font-semibold text-white">Event Title *</span>
                   <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="Friday Night Corporate Gig" />
                 </label>
+                <div className="block">
+                  <span className="mb-2 block text-sm font-semibold text-white">Gig Visibility *</span>
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm((p) => ({ ...p, visibility: 'public', artistIds: [] }))}
+                      className={`rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider transition-colors sm:text-sm ${form.visibility === 'public' ? 'border border-cyan-400/40 bg-cyan-500/20 text-cyan-200' : 'border border-white/10 text-gray-300 hover:bg-white/5'}`}
+                    >
+                      Public Feed
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((p) => ({ ...p, visibility: 'private' }))}
+                      className={`rounded-xl px-3 py-3 text-xs font-bold uppercase tracking-wider transition-colors sm:text-sm ${form.visibility === 'private' ? 'border border-amber-400/40 bg-amber-500/20 text-amber-200' : 'border border-white/10 text-gray-300 hover:bg-white/5'}`}
+                    >
+                      Private Invite
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Public gigs are visible to all artists in Feed. Private invitations are sent only to selected artists.
+                  </p>
+                </div>
+              </div>
+
+              {form.visibility === 'private' ? (
                 <div className="block">
                   <span className="mb-2 block text-sm font-semibold text-white">Artists * (up to 5)</span>
                   <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
@@ -540,7 +945,7 @@ const ManagerDashboard = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
 
               <label className="block">
                 <span className="mb-2 block text-sm font-semibold text-white">Description</span>
@@ -593,15 +998,23 @@ const ManagerDashboard = () => {
               </div>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-white">Offer Message To Artists</span>
+                <span className="mb-2 block text-sm font-semibold text-white">
+                  {form.visibility === 'private' ? 'Offer Message To Artists' : 'Public Gig Note'}
+                </span>
                 <textarea value={form.message} onChange={(e) => setForm((p) => ({ ...p, message: e.target.value }))} rows={3} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" placeholder="We would love you to headline this set. Please accept or decline in chat." />
               </label>
 
               {formError ? <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-200">{formError}</div> : null}
 
               <div className="flex flex-wrap gap-3 pt-2">
-                <Button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create Event + Send Offers'}</Button>
-                <Button type="button" variant="secondary" onClick={() => { setShowCreateModal(false); setFormError(''); resetForm(); }}>Cancel</Button>
+                <Button type="submit" disabled={creating}>
+                  {creating
+                    ? (editingEventId ? 'Saving...' : 'Creating...')
+                    : (editingEventId
+                      ? 'Save Changes'
+                      : (form.visibility === 'private' ? 'Create Private Event + Send Invites' : 'Publish Public Gig'))}
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => { setShowCreateModal(false); setEditingEventId(null); setFormError(''); resetForm(); }}>Cancel</Button>
               </div>
             </form>
           </div>
