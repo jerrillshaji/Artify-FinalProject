@@ -3,6 +3,7 @@ import { Search, MessageCircle, MoreHorizontal, Paperclip, Mic, Send, Phone, Vid
 import { useSearchParams } from 'react-router-dom';
 import { useSupabase } from '../context/SupabaseContext';
 import BackButton from '../components/layout/BackButton';
+import { formatINR } from '../lib/currency';
 
 const CONVERSATION_FETCH_LIMIT = 100;
 const MESSAGE_FETCH_LIMIT = 200;
@@ -472,7 +473,7 @@ const MessagesView = () => {
                                   <p className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-100/80">Booking Request</p>
                                   <p className="mt-1 font-semibold text-white">{booking?.events?.title || msg.bookingAction.title || 'Event Offer'}</p>
                                   <p className="mt-1 text-[11px] text-fuchsia-100/90">{booking?.events?.location || msg.bookingAction.location || 'Location TBD'}</p>
-                                  <p className="mt-1 text-[11px] text-fuchsia-100/90">${Number(booking?.offer_amount ?? msg.bookingAction.amount ?? 0).toLocaleString()} • {new Date(booking?.event_date || msg.bookingAction.eventDate || Date.now()).toLocaleString()}</p>
+                                  <p className="mt-1 text-[11px] text-fuchsia-100/90">{formatINR(booking?.offer_amount ?? msg.bookingAction.amount ?? 0)} • {new Date(booking?.event_date || msg.bookingAction.eventDate || Date.now()).toLocaleString()}</p>
                                   {booking ? <p className="mt-2 text-[10px] uppercase tracking-wider text-fuchsia-200">Status: {booking.status}</p> : null}
                                   {msg.bookingAction.note ? <p className="mt-2 text-[11px] text-fuchsia-100">{msg.bookingAction.note}</p> : null}
                                 </div>
@@ -488,7 +489,7 @@ const MessagesView = () => {
                                   <p className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-300">Booking Request</p>
                                   <p className="mt-1 font-semibold text-white">{booking?.events?.title || msg.bookingAction.title || 'Event Offer'}</p>
                                   <p className="mt-1 text-[11px] text-gray-400">{booking?.events?.location || msg.bookingAction.location || 'Location TBD'}</p>
-                                  <p className="mt-1 text-[11px] text-gray-400">${Number(booking?.offer_amount ?? msg.bookingAction.amount ?? 0).toLocaleString()} • {new Date(booking?.event_date || msg.bookingAction.eventDate || Date.now()).toLocaleString()}</p>
+                                  <p className="mt-1 text-[11px] text-gray-400">{formatINR(booking?.offer_amount ?? msg.bookingAction.amount ?? 0)} • {new Date(booking?.event_date || msg.bookingAction.eventDate || Date.now()).toLocaleString()}</p>
                                   {booking ? <p className="mt-2 text-[10px] uppercase tracking-wider text-gray-500">Status: {booking.status}</p> : null}
                                   {msg.bookingAction.note ? <p className="mt-2 text-[11px] text-gray-300">{msg.bookingAction.note}</p> : null}
 

@@ -1,10 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Star, Check, ChevronRight, MapPin, Music, Briefcase } from 'lucide-react';
+import { Search, Star, Check, ChevronRight, MapPin, Music, Briefcase, Navigation } from 'lucide-react';
+import { haversineDistance } from '../lib/geocoding';
+import { formatINR } from '../lib/currency';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
+
+const GENRE_OPTIONS = [
+  { label: 'Indie', value: 'indie' },
+  { label: 'Carnatic', value: 'carnatic' },
+  { label: 'Rap', value: 'rap' },
+  { label: 'DJ', value: 'dj' },
+  { label: 'Pop', value: 'pop' },
+  { label: 'Rock', value: 'rock' },
+  { label: 'Hindustani', value: 'hindustani' },
+];
+
+const formatGenreLabel = (genre) => {
+  if (!genre) return '';
+  const normalized = genre.toLowerCase();
+  if (normalized === 'dj') return 'DJ';
+  return normalized
+    .split(/[-\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
 
 const ManagerDiscovery = () => {
   const navigate = useNavigate();
@@ -15,8 +38,10 @@ const ManagerDiscovery = () => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-
-  const genres = ['Electronic', 'Jazz', 'Rock', 'Pop', 'Classical', 'Hip-Hop', 'R&B', 'Country'];
+  const [nearMe, setNearMe] = useState(false);
+  const [userCoords, setUserCoords] = useState(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   const getProfilePath = (profile) => {
     if (profile?.id) {
@@ -25,8 +50,16 @@ const ManagerDiscovery = () => {
     return '/profile';
   };
 
+  const formatDistance = (km) => {
+    if (km == null || !isFinite(km)) return null;
+    if (km < 1) return `${Math.round(km * 1000)} m away`;
+    if (km < 10) return `${km.toFixed(1)} km away`;
+    return `${Math.round(km)} km away`;
+  };
+
   const performSearch = async () => {
-    if (!searchQuery.trim() && !selectedGenre) {
+    const hasFilters = searchQuery.trim() || selectedGenre || nearMe;
+    if (!hasFilters) {
       setResults([]);
       setHasSearched(false);
       return;
@@ -46,23 +79,19 @@ const ManagerDiscovery = () => {
 
       // Build search conditions
       const conditions = [];
-      
+
       if (searchQuery.trim()) {
-        // Search by username (partial match, case-insensitive)
         conditions.push(`username.ilike.%${searchQuery.trim().toLowerCase()}%`);
-        // Search by full name (partial match, case-insensitive)
         conditions.push(`full_name.ilike.%${searchQuery.trim()}%`);
-        // Search by location (partial match, case-insensitive)
         conditions.push(`location.ilike.%${searchQuery.trim()}%`);
       }
 
       if (selectedGenre) {
-        // Search in artists.genres array
         const { data: artistsWithGenre } = await supabase
           .from('artists')
           .select('id')
-          .contains('genres', [selectedGenre]);
-        
+          .contains('genres', [selectedGenre.toLowerCase()]);
+
         if (artistsWithGenre && artistsWithGenre.length > 0) {
           const artistIds = artistsWithGenre.map(a => a.id);
           conditions.push(`id.in.(${artistIds.join(',')})`);
@@ -84,11 +113,30 @@ const ManagerDiscovery = () => {
         query = query.or(conditions.join(','));
       }
 
-      const { data, error } = await query.limit(50);
-
+      // Fetch more results when sorting by distance so we have enough to rank
+      const { data, error } = await query.limit(nearMe ? 200 : 50);
       if (error) throw error;
 
-      setResults(data || []);
+      let processed = data || [];
+
+      // Sort by distance when Near Me is active
+      if (nearMe && userCoords) {
+        processed = processed
+          .map((p) => ({
+            ...p,
+            _distanceKm:
+              p.latitude != null && p.longitude != null
+                ? haversineDistance(userCoords.lat, userCoords.lng, p.latitude, p.longitude)
+                : null,
+          }))
+          .sort((a, b) => {
+            const da = a._distanceKm ?? Infinity;
+            const db = b._distanceKm ?? Infinity;
+            return da - db;
+          });
+      }
+
+      setResults(processed);
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
@@ -97,16 +145,51 @@ const ManagerDiscovery = () => {
     }
   };
 
-  // Debounced search
+  const handleNearMe = () => {
+    if (nearMe) {
+      setNearMe(false);
+      setLocationError('');
+      return;
+    }
+    // Coords already available — just enable the filter
+    if (userCoords) {
+      setNearMe(true);
+      return;
+    }
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setGettingLocation(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setNearMe(true);
+        setGettingLocation(false);
+      },
+      (err) => {
+        setGettingLocation(false);
+        setLocationError(
+          err.code === 1
+            ? 'Location access denied. Please allow location access in your browser and try again.'
+            : 'Could not get your location. Please try again.'
+        );
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  };
+
+  // Debounced search — also re-runs when nearMe toggles
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchQuery.trim() || selectedGenre) {
+      if (searchQuery.trim() || selectedGenre || nearMe) {
         performSearch();
       }
-    }, 500);
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedGenre, searchType]);
+  }, [searchQuery, selectedGenre, searchType, nearMe]);
 
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-10 pb-12">
@@ -169,8 +252,26 @@ const ManagerDiscovery = () => {
         </div>
       </div>
 
-      {/* Genre Filters */}
+      {/* Genre + Location Filters */}
       <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-hide">
+        {/* Near Me toggle */}
+        <button
+          onClick={handleNearMe}
+          disabled={gettingLocation}
+          className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold border whitespace-nowrap flex-shrink-0 transition-all flex items-center gap-1.5 ${
+            nearMe
+              ? 'bg-cyan-500 text-white border-cyan-500'
+              : 'bg-transparent text-gray-400 border-white/10 hover:border-white/40 hover:text-white'
+          }`}
+        >
+          {gettingLocation ? (
+            <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Navigation size={12} />
+          )}
+          Near Me
+        </button>
+
         <button
           onClick={() => setSelectedGenre('')}
           className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold border whitespace-nowrap flex-shrink-0 transition-all ${
@@ -181,20 +282,36 @@ const ManagerDiscovery = () => {
         >
           All Genres
         </button>
-        {genres.map((genre) => (
+        {GENRE_OPTIONS.map((genre) => (
           <button
-            key={genre}
-            onClick={() => setSelectedGenre(genre)}
+            key={genre.value}
+            onClick={() => setSelectedGenre(genre.value)}
             className={`px-3 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold border whitespace-nowrap flex-shrink-0 transition-all ${
-              selectedGenre === genre
+              selectedGenre === genre.value
                 ? 'bg-white text-black border-white'
                 : 'bg-transparent text-gray-400 border-white/10 hover:border-white/40 hover:text-white'
             }`}
           >
-            {genre}
+            {genre.label}
           </button>
         ))}
       </div>
+
+      {/* Location permission error */}
+      {locationError && (
+        <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5">
+          <MapPin size={13} className="flex-shrink-0" />
+          {locationError}
+        </div>
+      )}
+
+      {/* Near Me active banner */}
+      {nearMe && userCoords && !loading && results.length > 0 && (
+        <div className="flex items-center gap-2 text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-4 py-2.5">
+          <Navigation size={13} className="flex-shrink-0" />
+          Showing {results.length} result{results.length !== 1 ? 's' : ''} sorted by distance from your location
+        </div>
+      )}
 
       {/* Results */}
       {loading && (
@@ -256,7 +373,7 @@ const ManagerDiscovery = () => {
                 <p className="text-gray-400 font-medium text-xs sm:text-sm mb-4 sm:mb-6 flex items-center gap-1 flex-wrap">
                   <span className="truncate">
                     {profile.role === 'artist' 
-                      ? (profile.artists?.[0]?.genres?.[0] || 'Artist')
+                      ? formatGenreLabel(profile.artists?.[0]?.genres?.[0] || 'artist')
                       : (profile.managers?.[0]?.company_type || 'Manager')
                     }
                   </span>
@@ -275,7 +392,21 @@ const ManagerDiscovery = () => {
                   ))}
                   {profile.location && (
                     <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-white/5 text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded border border-white/5 flex items-center gap-1">
-                      <MapPin size={10} sm={12} /> {profile.location}
+                      <MapPin size={10} /> {profile.location}
+                    </span>
+                  )}
+                  {nearMe && (
+                    <span
+                      className={`px-2 sm:px-3 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded border flex items-center gap-1 ${
+                        profile._distanceKm != null
+                          ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                          : 'bg-white/5 text-gray-600 border-white/5'
+                      }`}
+                    >
+                      <Navigation size={10} />
+                      {profile._distanceKm != null
+                        ? formatDistance(profile._distanceKm)
+                        : 'Location unknown'}
                     </span>
                   )}
                 </div>
@@ -286,7 +417,7 @@ const ManagerDiscovery = () => {
                     </p>
                     <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                       {profile.role === 'artist'
-                        ? `$${profile.artists?.[0]?.base_price || '0'}`
+                        ? formatINR(profile.artists?.[0]?.base_price || 0)
                         : profile.managers?.[0]?.total_events || '0'
                       }
                     </p>

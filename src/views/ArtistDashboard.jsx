@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Calendar, List, DollarSign, Zap, TrendingUp, Star, MapPin, MessageCircle, X, Check } from 'lucide-react';
+import { Calendar, List, IndianRupee, Zap, TrendingUp, Star, MapPin, MessageCircle, X, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
+import { formatINR } from '../lib/currency';
 
 const encoder = new TextEncoder();
 
@@ -130,7 +131,7 @@ const ArtistDashboard = () => {
     const upcoming = bookings.filter((item) => item.status === 'accepted' && new Date(item.event_date) > new Date()).length;
 
     return [
-      { label: 'Revenue Potential', value: `$${Math.round(totalValue).toLocaleString()}`, icon: DollarSign, color: 'text-emerald-400', trend: 'All offers' },
+      { label: 'Revenue Potential', value: formatINR(Math.round(totalValue)), icon: IndianRupee, color: 'text-emerald-400', trend: 'All offers' },
       { label: 'Pending', value: String(pending).padStart(2, '0'), icon: Zap, color: 'text-yellow-400', trend: 'Awaiting action' },
       { label: 'Upcoming', value: String(upcoming).padStart(2, '0'), icon: TrendingUp, color: 'text-fuchsia-400', trend: 'Future gigs' },
       { label: 'Accepted', value: String(accepted).padStart(2, '0'), icon: Star, color: 'text-cyan-400', trend: 'Confirmed' },
@@ -299,7 +300,7 @@ const ArtistDashboard = () => {
                       <p className="mb-2 text-xs text-gray-400 sm:text-sm">{req.organizer?.full_name || req.organizer?.username || 'Organizer'}</p>
                       <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-gray-500 sm:gap-4 sm:text-xs">
                         <span className="flex items-center gap-1"><MapPin size={10} /> {req.events?.location || 'Location TBD'}</span>
-                        <span className="flex items-center gap-1 text-emerald-400"><DollarSign size={10} /> ${Number(req.offer_amount || 0).toLocaleString()}</span>
+                        <span className="flex items-center gap-1 text-emerald-400"><IndianRupee size={10} /> {formatINR(req.offer_amount || 0)}</span>
                         <span>{new Date(req.event_date).toLocaleString()}</span>
                       </div>
                       {req.message ? <p className="mt-2 line-clamp-2 text-xs text-gray-400">"{req.message}"</p> : null}
@@ -326,7 +327,7 @@ const ArtistDashboard = () => {
                   <div>
                     <h3 className="text-base font-bold text-white sm:text-lg">{gig.title}</h3>
                     <p className="mt-1 text-xs text-gray-400 sm:text-sm">{new Date(gig.event_date).toLocaleString()} • {gig.location}</p>
-                    <p className="mt-1 text-xs text-gray-500">{gig.organizer?.full_name || gig.organizer?.username || 'Organizer'} • ${Number(gig.budget_max || gig.budget_min || 0).toLocaleString()}</p>
+                    <p className="mt-1 text-xs text-gray-500">{gig.organizer?.full_name || gig.organizer?.username || 'Organizer'} • {formatINR(gig.budget_max || gig.budget_min || 0)}</p>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => navigate(`/messages?userId=${gig.organizer_id}`)} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white sm:text-sm">Message</button>
@@ -384,7 +385,7 @@ const ArtistDashboard = () => {
                   <div key={item.id} className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
                     <p className="font-bold text-white">{item.events?.title || 'Event Offer'}</p>
                     <p className="mt-1 text-xs text-gray-300">{new Date(item.event_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {item.events?.location || 'Location TBD'}</p>
-                    <p className="mt-1 text-xs text-emerald-300">Confirmed for ${Number(item.offer_amount || 0).toLocaleString()}</p>
+                    <p className="mt-1 text-xs text-emerald-300">Confirmed for {formatINR(item.offer_amount || 0)}</p>
                   </div>
                 ))}
               </div>

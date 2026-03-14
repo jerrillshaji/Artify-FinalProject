@@ -39,7 +39,7 @@ export function SupabaseProvider({ children }) {
     if (data?.role === 'artist') {
       const { data: artistData, error: artistError } = await supabase
         .from('artists')
-        .select('stage_name, portfolio_images')
+        .select('stage_name, genres, portfolio_images')
         .eq('id', userId)
         .maybeSingle();
 

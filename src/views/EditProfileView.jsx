@@ -4,6 +4,17 @@ import { X, Upload } from 'lucide-react';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
+import { geocodeLocation } from '../lib/geocoding';
+
+const GENRE_OPTIONS = [
+  { label: 'Indie', value: 'indie' },
+  { label: 'Carnatic', value: 'carnatic' },
+  { label: 'Rap', value: 'rap' },
+  { label: 'DJ', value: 'dj' },
+  { label: 'Pop', value: 'pop' },
+  { label: 'Rock', value: 'rock' },
+  { label: 'Hindustani', value: 'hindustani' },
+];
 
 const EditProfileView = () => {
   const { supabase, user, profile: sharedProfile, refreshProfile } = useSupabase();
@@ -16,6 +27,7 @@ const EditProfileView = () => {
     bio: '',
     location: '',
     stage_name: '',
+    genres: [],
     company_name: '',
     avatar_url: '',
   });
@@ -42,6 +54,7 @@ const EditProfileView = () => {
             bio: profileData.bio || '',
             location: profileData.location || '',
             stage_name: profileData.stage_name || '',
+            genres: Array.isArray(profileData.genres) ? profileData.genres : [],
             company_name: profileData.company_name || '',
             avatar_url: profileData.avatar_url || '',
           });
@@ -65,6 +78,15 @@ const EditProfileView = () => {
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handleGenreToggle = (genreValue) => {
+    setFormData((prev) => ({
+      ...prev,
+      genres: prev.genres.includes(genreValue)
+        ? prev.genres.filter((genre) => genre !== genreValue)
+        : [...prev.genres, genreValue],
     }));
   };
 
@@ -96,16 +118,29 @@ const EditProfileView = () => {
     setSuccessMessage('');
 
     try {
+      // Geocode location if it changed, enabling distance-based discovery
+      const locationChanged = formData.location !== (profile?.location || '');
+      let coords = null;
+      if (formData.location && locationChanged) {
+        coords = await geocodeLocation(formData.location);
+      }
+
+      const profileUpdate = {
+        full_name: formData.full_name,
+        bio: formData.bio,
+        location: formData.location,
+        avatar_url: imagePreview,
+        updated_at: new Date().toISOString(),
+      };
+      if (coords) {
+        profileUpdate.latitude = coords.lat;
+        profileUpdate.longitude = coords.lng;
+      }
+
       // Update profiles table
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          bio: formData.bio,
-          location: formData.location,
-          avatar_url: imagePreview,
-          updated_at: new Date().toISOString(),
-        })
+        .update(profileUpdate)
         .eq('id', user.id);
 
       if (profileError) {
@@ -125,6 +160,7 @@ const EditProfileView = () => {
           .from('artists')
           .update({
             stage_name: formData.stage_name,
+            genres: formData.genres,
             updated_at: new Date().toISOString(),
           })
           .eq('id', user.id);
@@ -253,6 +289,33 @@ const EditProfileView = () => {
               className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-fuchsia-500 transition-colors"
             />
           </div>
+
+          {role === 'artist' && (
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">Genres</label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {GENRE_OPTIONS.map((genre) => {
+                  const isSelected = formData.genres.includes(genre.value);
+
+                  return (
+                    <button
+                      key={genre.value}
+                      type="button"
+                      onClick={() => handleGenreToggle(genre.value)}
+                      className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                        isSelected
+                          ? 'border-cyan-400 bg-cyan-500/20 text-cyan-100'
+                          : 'border-white/15 bg-white/5 text-gray-300 hover:border-white/40 hover:text-white'
+                      }`}
+                    >
+                      {genre.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Select one or more genres that match the artist.</p>
+            </div>
+          )}
 
           {/* Bio */}
           <div>

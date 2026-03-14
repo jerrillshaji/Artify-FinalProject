@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Zap, DollarSign, Calendar, Users, Clock, Plus, X, Search, Check } from 'lucide-react';
+import { Zap, IndianRupee, Calendar, Users, Clock, Plus, X, Search, Check } from 'lucide-react';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
+import { formatINR } from '../lib/currency';
 
 const encoder = new TextEncoder();
 
@@ -162,7 +163,7 @@ const ManagerDashboard = () => {
     const totalBudget = events.reduce((sum, eventItem) => sum + Number(eventItem.budget_max || eventItem.budget_min || 0), 0);
 
     return [
-      { label: 'Budget Planned', value: `$${Math.round(totalBudget).toLocaleString()}`, icon: DollarSign, color: 'text-emerald-400', trend: 'Across Events' },
+      { label: 'Budget Planned', value: formatINR(Math.round(totalBudget)), icon: IndianRupee, color: 'text-emerald-400', trend: 'Across Events' },
       { label: 'Events', value: String(events.length).padStart(2, '0'), icon: Calendar, color: 'text-fuchsia-400', trend: `${thisMonth.length} this month` },
       { label: 'Pending Offers', value: String(pendingOffers).padStart(2, '0'), icon: Clock, color: 'text-yellow-400', trend: 'Awaiting response' },
       { label: 'Accepted', value: String(acceptedOffers).padStart(2, '0'), icon: Users, color: 'text-cyan-400', trend: 'Booked artists' },
@@ -404,7 +405,7 @@ const ManagerDashboard = () => {
                 <div className="grid grid-cols-3 gap-2 text-xs sm:gap-3 sm:text-sm">
                   <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <p className="text-gray-500">Offer</p>
-                    <p className="font-bold text-white">${Number(eventItem.budget_max || eventItem.budget_min || 0).toLocaleString()}</p>
+                    <p className="font-bold text-white">{formatINR(eventItem.budget_max || eventItem.budget_min || 0)}</p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <p className="text-gray-500">Pending</p>
@@ -451,7 +452,7 @@ const ManagerDashboard = () => {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-base font-bold text-white sm:text-lg">{request.events?.title || 'Event Request'}</p>
                   <p className="mt-1 text-xs text-gray-400 sm:text-sm">{new Date(request.event_date).toLocaleString()} • {request.events?.location || 'Location TBD'}</p>
-                  <p className="mt-1 text-xs text-gray-500">Requested by {request.artistProfile?.full_name || request.artistProfile?.username || 'Artist'} • ${Number(request.offer_amount || 0).toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-gray-500">Requested by {request.artistProfile?.full_name || request.artistProfile?.username || 'Artist'} • {formatINR(request.offer_amount || 0)}</p>
                 </div>
 
                 <div className="flex gap-2">
@@ -560,7 +561,7 @@ const ManagerDashboard = () => {
                   <input type="number" min="1" step="0.5" value={form.durationHours} onChange={(e) => setForm((p) => ({ ...p, durationHours: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-sm font-semibold text-white">Offer Amount (USD) *</span>
+                  <span className="mb-2 block text-sm font-semibold text-white">Offer Amount (INR) *</span>
                   <input type="number" min="1" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-fuchsia-400/60" />
                 </label>
               </div>
