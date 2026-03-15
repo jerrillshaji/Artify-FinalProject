@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Zap, IndianRupee, Calendar, Users, Clock, Plus, X, Search, Check } from 'lucide-react';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
@@ -26,6 +27,7 @@ const createBookingChatPayload = ({ bookingId, title, location, amount, eventDat
 };
 
 const ManagerDashboard = () => {
+  const navigate = useNavigate();
   const { supabase, user } = useSupabase();
   const [events, setEvents] = useState([]);
   const [artists, setArtists] = useState([]);
@@ -35,10 +37,13 @@ const ManagerDashboard = () => {
   const [selectedShowId, setSelectedShowId] = useState(null);
   const [managerSummary, setManagerSummary] = useState({
     plannedBudget: 0,
+    paidOut: 0,
+    unpaidAccepted: 0,
     eventCount: 0,
     thisMonthCount: 0,
     pendingOffers: 0,
     acceptedOffers: 0,
+    paidOffers: 0,
   });
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -106,7 +111,7 @@ const ManagerDashboard = () => {
 
       const bookingResult = await supabase
         .from('bookings')
-        .select('id,event_id,artist_id,status,offer_amount,message,event_date,created_at,events(title,location)')
+        .select('id,event_id,artist_id,status,payment_status,paid_at,offer_amount,message,event_date,created_at,events(title,location)')
         .eq('organizer_id', user.id);
 
       if (bookingResult.error) throw bookingResult.error;
@@ -120,9 +125,14 @@ const ManagerDashboard = () => {
         return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
       }).length;
 
-      const plannedBudget = trackedEvents.reduce((sum, eventItem) => sum + Number(eventItem.budget_max || eventItem.budget_min || 0), 0);
+      const acceptedBookings = bookings.filter((booking) => booking.status === 'accepted');
+      const paidBookings = acceptedBookings.filter((booking) => booking.payment_status === 'paid');
+      const unpaidAcceptedBookings = acceptedBookings.filter((booking) => booking.payment_status !== 'paid');
+      const plannedBudget = unpaidAcceptedBookings.reduce((sum, booking) => sum + Number(booking.offer_amount || 0), 0);
+      const paidOut = paidBookings.reduce((sum, booking) => sum + Number(booking.offer_amount || 0), 0);
       const pendingOffers = bookings.filter((booking) => booking.status === 'pending').length;
-      const acceptedOffers = bookings.filter((booking) => booking.status === 'accepted').length;
+      const acceptedOffers = acceptedBookings.length;
+      const paidOffers = paidBookings.length;
 
       const bookingArtistIds = [...new Set(bookings.map((booking) => booking.artist_id).filter(Boolean))];
       let bookingArtistMap = new Map();
@@ -145,19 +155,23 @@ const ManagerDashboard = () => {
 
       setManagerSummary({
         plannedBudget,
+        paidOut,
+        unpaidAccepted: unpaidAcceptedBookings.length,
         eventCount: trackedEvents.length,
         thisMonthCount,
         pendingOffers,
         acceptedOffers,
+        paidOffers,
       });
 
       const countsByEvent = bookings.reduce((acc, booking) => {
         if (!acc[booking.event_id]) {
-          acc[booking.event_id] = { pending: 0, accepted: 0, declined: 0 };
+          acc[booking.event_id] = { pending: 0, accepted: 0, declined: 0, paid: 0 };
         }
         if (booking.status === 'pending') acc[booking.event_id].pending += 1;
         if (booking.status === 'accepted') acc[booking.event_id].accepted += 1;
         if (booking.status === 'declined') acc[booking.event_id].declined += 1;
+        if (booking.status === 'accepted' && booking.payment_status === 'paid') acc[booking.event_id].paid += 1;
         return acc;
       }, {});
 
@@ -188,10 +202,13 @@ const ManagerDashboard = () => {
       setBookingDetails([]);
       setManagerSummary({
         plannedBudget: 0,
+        paidOut: 0,
+        unpaidAccepted: 0,
         eventCount: 0,
         thisMonthCount: 0,
         pendingOffers: 0,
         acceptedOffers: 0,
+        paidOffers: 0,
       });
     } finally {
       setLoading(false);
@@ -207,7 +224,7 @@ const ManagerDashboard = () => {
       { key: 'budget', label: 'Budget Planned', value: formatINR(Math.round(managerSummary.plannedBudget || 0)), icon: IndianRupee, color: 'text-emerald-400', trend: 'Across active events' },
       { key: 'events', label: 'Events', value: String(managerSummary.eventCount).padStart(2, '0'), icon: Calendar, color: 'text-fuchsia-400', trend: `${managerSummary.thisMonthCount} this month` },
       { key: 'pending', label: 'Pending Offers', value: String(managerSummary.pendingOffers).padStart(2, '0'), icon: Clock, color: 'text-yellow-400', trend: 'Awaiting response' },
-      { key: 'accepted', label: 'Accepted', value: String(managerSummary.acceptedOffers).padStart(2, '0'), icon: Users, color: 'text-cyan-400', trend: 'Booked artists' },
+      { key: 'accepted', label: 'Accepted', value: String(managerSummary.acceptedOffers).padStart(2, '0'), icon: Users, color: 'text-cyan-400', trend: `${managerSummary.paidOffers} paid • ${managerSummary.unpaidAccepted} unpaid` },
     ];
   }, [managerSummary]);
 
@@ -600,6 +617,16 @@ const ManagerDashboard = () => {
     }
   };
 
+  const handlePayEvent = (eventItem) => {
+    if (!eventItem?.id) return;
+    navigate(`/payments?eventId=${encodeURIComponent(eventItem.id)}`);
+  };
+
+  const handlePayArtist = (booking) => {
+    if (!booking?.id) return;
+    navigate(`/payments?bookingId=${encodeURIComponent(booking.id)}`);
+  };
+
   return (
     <div className="space-y-4 pb-12 sm:space-y-6 md:space-y-8">
       <div className="mb-4 flex items-center sm:mb-6">
@@ -701,7 +728,20 @@ const ManagerDashboard = () => {
                         <p className="truncate text-sm text-emerald-100">
                           {booking.artistProfile?.full_name || booking.artistProfile?.username || 'Artist'}
                         </p>
-                        <span className="text-xs font-bold text-emerald-300">{formatINR(booking.offer_amount || 0)}</span>
+                        <div className="flex items-center gap-2">
+                          {booking.payment_status === 'paid' ? (
+                            <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-200">Paid</span>
+                          ) : null}
+                          <span className="text-xs font-bold text-emerald-300">{formatINR(booking.offer_amount || 0)}</span>
+                          <Button
+                            type="button"
+                            className="px-2.5 py-1 text-[10px] sm:text-xs"
+                            onClick={() => handlePayArtist(booking)}
+                            disabled={booking.payment_status === 'paid'}
+                          >
+                            {booking.payment_status === 'paid' ? 'Paid' : 'Pay'}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -746,7 +786,7 @@ const ManagerDashboard = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-xs sm:gap-3 sm:text-sm">
+                <div className="grid grid-cols-4 gap-2 text-xs sm:gap-3 sm:text-sm">
                   <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <p className="text-gray-500">Offer</p>
                     <p className="font-bold text-white">{formatINR(eventItem.budget_max || eventItem.budget_min || 0)}</p>
@@ -758,6 +798,10 @@ const ManagerDashboard = () => {
                   <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                     <p className="text-gray-500">Accepted</p>
                     <p className="font-bold text-emerald-300">{eventItem.offers.accepted}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <p className="text-gray-500">Paid</p>
+                    <p className="font-bold text-cyan-300">{eventItem.offers.paid || 0}</p>
                   </div>
                 </div>
 
@@ -784,6 +828,19 @@ const ManagerDashboard = () => {
                           : (eventItem.offers?.accepted || 0) === 0
                             ? 'Close Event (Accept artist first)'
                             : 'Close Event'}
+                    </Button>
+                    <Button
+                      type="button"
+                      className="px-3 py-1.5 text-xs sm:text-sm"
+                      onClick={() => handlePayEvent(eventItem)}
+                      disabled={
+                        (eventItem.offers?.accepted || 0) === 0 ||
+                        !bookingDetails.some((booking) => booking.event_id === eventItem.id && booking.status === 'accepted' && booking.payment_status !== 'paid')
+                      }
+                    >
+                      {bookingDetails.some((booking) => booking.event_id === eventItem.id && booking.status === 'accepted' && booking.payment_status !== 'paid')
+                        ? 'Pay'
+                        : 'Paid'}
                     </Button>
                     <Button
                       type="button"

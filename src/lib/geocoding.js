@@ -27,6 +27,36 @@ export async function geocodeLocation(locationText) {
 }
 
 /**
+ * Fetches live coordinates from the device/browser geolocation API.
+ * Returns { lat, lng } or throws when unavailable/denied.
+ */
+export function getDeviceLocation(options = {}) {
+  const config = {
+    timeout: 10000,
+    enableHighAccuracy: false,
+    maximumAge: 0,
+    ...options,
+  };
+
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by your browser.'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        reject(err);
+      },
+      config
+    );
+  });
+}
+
+/**
  * Calculates the great-circle distance between two WGS84 coordinates
  * using the Haversine formula. Returns distance in kilometers.
  */

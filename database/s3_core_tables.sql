@@ -75,6 +75,8 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   artist_id UUID REFERENCES public.artists(id) ON DELETE CASCADE NOT NULL,
   organizer_id UUID REFERENCES public.managers(id) ON DELETE CASCADE NOT NULL,
   status TEXT CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled', 'completed')) DEFAULT 'pending',
+  payment_status TEXT CHECK (payment_status IN ('unpaid', 'paid')) DEFAULT 'unpaid',
+  paid_at TIMESTAMPTZ,
   offer_amount NUMERIC NOT NULL,
   message TEXT,
   event_date TIMESTAMPTZ NOT NULL,

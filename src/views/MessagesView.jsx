@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MessageCircle, MoreHorizontal, Paperclip, Mic, Send, Phone, Video, X } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSupabase } from '../context/SupabaseContext';
 import BackButton from '../components/layout/BackButton';
 import { formatINR } from '../lib/currency';
@@ -8,6 +8,7 @@ import { formatINR } from '../lib/currency';
 const CONVERSATION_FETCH_LIMIT = 100;
 const MESSAGE_FETCH_LIMIT = 200;
 const BOOKING_ACTION_PREFIX = '__BOOKING_ACTION__::';
+const PAYMENT_ACTION_PREFIX = '__PAYMENT_ACTION__::';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -53,7 +54,24 @@ const parseBookingActionPayload = (text) => {
   };
 };
 
+const parsePaymentActionPayload = (text) => {
+  if (!text || !text.startsWith(PAYMENT_ACTION_PREFIX)) return null;
+  const parts = text.split('::');
+  if (parts.length < 7) return null;
+
+  return {
+    bookingId: parts[1],
+    source: parts[2],
+    title: parts[3],
+    location: parts[4],
+    amount: Number(parts[5] || 0),
+    eventDate: parts[6],
+    note: parts.slice(7).join('::') || null,
+  };
+};
+
 const MessagesView = () => {
+  const navigate = useNavigate();
   const { supabase, user } = useSupabase();
   const [searchParams] = useSearchParams();
   const targetUserId = searchParams.get('userId');
@@ -184,6 +202,7 @@ const MessagesView = () => {
             ...msg,
             decryptedContent,
             bookingAction: parseBookingActionPayload(decryptedContent),
+            paymentAction: parsePaymentActionPayload(decryptedContent),
           };
         })
       );
@@ -191,13 +210,13 @@ const MessagesView = () => {
       setMessages(decryptedMessages);
 
       const bookingIds = decryptedMessages
-        .map((msg) => msg.bookingAction?.bookingId)
+        .map((msg) => msg.bookingAction?.bookingId || msg.paymentAction?.bookingId)
         .filter((value, index, arr) => value && arr.indexOf(value) === index);
 
       if (bookingIds.length > 0) {
         const { data: bookingRows, error: bookingError } = await supabase
           .from('bookings')
-          .select('id,artist_id,organizer_id,status,offer_amount,event_date,events(title,location,venue_name)')
+          .select('id,artist_id,organizer_id,status,payment_status,paid_at,offer_amount,event_date,events(title,location,venue_name)')
           .in('id', bookingIds);
 
         if (!bookingError) {
@@ -312,6 +331,12 @@ const MessagesView = () => {
     } finally {
       setUpdatingBookingId(null);
     }
+  };
+
+  const handlePayNowFromMessage = (message) => {
+    const payment = message?.paymentAction;
+    if (!payment?.bookingId) return;
+    navigate(`/payments?bookingId=${encodeURIComponent(payment.bookingId)}`);
   };
 
   const handleKeyPress = (event) => {
@@ -436,13 +461,24 @@ const MessagesView = () => {
               >
                 {messages.map((msg, index) => {
                   const isOwn = msg.sender_id === user.id;
-                  const booking = msg.bookingAction ? bookingRecords[msg.bookingAction.bookingId] : null;
+                  const actionCard = msg.bookingAction || msg.paymentAction;
+                  const booking = actionCard ? bookingRecords[actionCard.bookingId] : null;
+                  const isPaymentCard = Boolean(msg.paymentAction);
+                  const cardTitle = isPaymentCard ? 'Payment' : 'Booking Request';
                   const canRespondToBooking = Boolean(
                     msg.bookingAction &&
                     msg.receiver_id === user.id &&
                     booking &&
                     booking.status === 'pending' &&
                     (booking.artist_id === user.id || booking.organizer_id === user.id)
+                  );
+                  const canPayFromCard = Boolean(
+                    msg.paymentAction &&
+                    msg.receiver_id === user.id &&
+                    booking &&
+                    booking.organizer_id === user.id &&
+                    booking.status === 'accepted' &&
+                    booking.payment_status !== 'paid'
                   );
                   const showDate = index === 0 || new Date(messages[index - 1].created_at).toDateString() !== new Date(msg.created_at).toDateString();
 
@@ -468,14 +504,14 @@ const MessagesView = () => {
                         {isOwn ? (
                           <div className="flex max-w-[calc(100%-2rem)] flex-col items-end space-y-1">
                             <div className="max-w-[240px] break-words rounded-xl rounded-br-none bg-gradient-to-tr from-fuchsia-600 to-purple-600 p-2 text-xs text-white shadow-[0_0_15px_rgba(192,38,211,0.3)] sm:max-w-sm sm:rounded-2xl sm:p-3 sm:text-sm">
-                              {msg.bookingAction ? (
+                              {actionCard ? (
                                 <div>
-                                  <p className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-100/80">Booking Request</p>
-                                  <p className="mt-1 font-semibold text-white">{booking?.events?.title || msg.bookingAction.title || 'Event Offer'}</p>
-                                  <p className="mt-1 text-[11px] text-fuchsia-100/90">{booking?.events?.location || msg.bookingAction.location || 'Location TBD'}</p>
-                                  <p className="mt-1 text-[11px] text-fuchsia-100/90">{formatINR(booking?.offer_amount ?? msg.bookingAction.amount ?? 0)} • {new Date(booking?.event_date || msg.bookingAction.eventDate || Date.now()).toLocaleString()}</p>
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-100/80">{cardTitle}</p>
+                                  <p className="mt-1 font-semibold text-white">{booking?.events?.title || actionCard.title || 'Event Offer'}</p>
+                                  <p className="mt-1 text-[11px] text-fuchsia-100/90">{booking?.events?.location || actionCard.location || 'Location TBD'}</p>
+                                  <p className="mt-1 text-[11px] text-fuchsia-100/90">{formatINR(booking?.offer_amount ?? actionCard.amount ?? 0)} • {new Date(booking?.event_date || actionCard.eventDate || Date.now()).toLocaleString()}</p>
                                   {booking ? <p className="mt-2 text-[10px] uppercase tracking-wider text-fuchsia-200">Status: {booking.status}</p> : null}
-                                  {msg.bookingAction.note ? <p className="mt-2 text-[11px] text-fuchsia-100">{msg.bookingAction.note}</p> : null}
+                                  {actionCard.note ? <p className="mt-2 text-[11px] text-fuchsia-100">{actionCard.note}</p> : null}
                                 </div>
                               ) : msg.decryptedContent}
                             </div>
@@ -484,14 +520,14 @@ const MessagesView = () => {
                         ) : (
                           <div className="min-w-0 space-y-1">
                             <div className="max-w-[240px] break-words rounded-xl rounded-bl-none border border-white/10 bg-[#1a1a1a] p-2 text-xs text-gray-300 sm:max-w-sm sm:rounded-2xl sm:p-3 sm:text-sm">
-                              {msg.bookingAction ? (
+                              {actionCard ? (
                                 <div>
-                                  <p className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-300">Booking Request</p>
-                                  <p className="mt-1 font-semibold text-white">{booking?.events?.title || msg.bookingAction.title || 'Event Offer'}</p>
-                                  <p className="mt-1 text-[11px] text-gray-400">{booking?.events?.location || msg.bookingAction.location || 'Location TBD'}</p>
-                                  <p className="mt-1 text-[11px] text-gray-400">{formatINR(booking?.offer_amount ?? msg.bookingAction.amount ?? 0)} • {new Date(booking?.event_date || msg.bookingAction.eventDate || Date.now()).toLocaleString()}</p>
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-300">{cardTitle}</p>
+                                  <p className="mt-1 font-semibold text-white">{booking?.events?.title || actionCard.title || 'Event Offer'}</p>
+                                  <p className="mt-1 text-[11px] text-gray-400">{booking?.events?.location || actionCard.location || 'Location TBD'}</p>
+                                  <p className="mt-1 text-[11px] text-gray-400">{formatINR(booking?.offer_amount ?? actionCard.amount ?? 0)} • {new Date(booking?.event_date || actionCard.eventDate || Date.now()).toLocaleString()}</p>
                                   {booking ? <p className="mt-2 text-[10px] uppercase tracking-wider text-gray-500">Status: {booking.status}</p> : null}
-                                  {msg.bookingAction.note ? <p className="mt-2 text-[11px] text-gray-300">{msg.bookingAction.note}</p> : null}
+                                  {actionCard.note ? <p className="mt-2 text-[11px] text-gray-300">{actionCard.note}</p> : null}
 
                                   {canRespondToBooking ? (
                                     <div className="mt-3 flex gap-2">
@@ -509,6 +545,25 @@ const MessagesView = () => {
                                       >
                                         Accept
                                       </button>
+                                    </div>
+                                  ) : null}
+
+                                  {canPayFromCard ? (
+                                    <div className="mt-3 flex gap-2">
+                                      <button
+                                        onClick={() => handlePayNowFromMessage(msg)}
+                                        className="rounded-lg bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400"
+                                      >
+                                        Pay Now
+                                      </button>
+                                    </div>
+                                  ) : null}
+
+                                  {msg.paymentAction && booking?.payment_status === 'paid' ? (
+                                    <div className="mt-3">
+                                      <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-200">
+                                        Paid
+                                      </span>
                                     </div>
                                   ) : null}
                                 </div>

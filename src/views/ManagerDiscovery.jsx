@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Star, Check, ChevronRight, MapPin, Music, Briefcase, Navigation } from 'lucide-react';
-import { haversineDistance } from '../lib/geocoding';
+import { haversineDistance, getDeviceLocation } from '../lib/geocoding';
 import { formatINR } from '../lib/currency';
 import { KERALA_DISTRICTS, KERALA_DISTRICT_MAP } from '../data/keralaDistricts';
 import Button from '../components/ui/Button';
@@ -44,6 +44,7 @@ const ManagerDiscovery = () => {
   const [userCoords, setUserCoords] = useState(null);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState('');
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   const getProfilePath = (profile) => {
     if (profile?.id) {
@@ -59,7 +60,35 @@ const ManagerDiscovery = () => {
     return `${Math.round(km)} km away`;
   };
 
+  const requestDeviceLocation = async () => {
+    setGettingLocation(true);
+    setLocationError('');
+    try {
+      const coords = await getDeviceLocation();
+      setUserCoords(coords);
+      setShowLocationModal(false);
+      return coords;
+    } catch (err) {
+      const message =
+        err.code === 1
+          ? 'Location access denied. Please allow location access in your browser and try again.'
+          : err.message || 'Could not get your location. Please try again.';
+      setLocationError(message);
+      setShowLocationModal(true);
+      return null;
+    } finally {
+      setGettingLocation(false);
+    }
+  };
+
   const getSearchOriginCoords = () => {
+    if (selectedDistrict === 'current') {
+      if (userCoords?.lat != null && userCoords?.lng != null) {
+        return userCoords;
+      }
+      return null;
+    }
+
     if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
       const district = KERALA_DISTRICT_MAP[selectedDistrict];
       return { lat: district.latitude, lng: district.longitude };
@@ -192,33 +221,11 @@ const ManagerDiscovery = () => {
       setLocationError('');
       return;
     }
-    // Coords already available — just enable the filter
-    if (userCoords) {
-      setNearMe(true);
-      return;
-    }
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser.');
-      return;
-    }
-    setGettingLocation(true);
-    setLocationError('');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    requestDeviceLocation().then((coords) => {
+      if (coords) {
         setNearMe(true);
-        setGettingLocation(false);
-      },
-      (err) => {
-        setGettingLocation(false);
-        setLocationError(
-          err.code === 1
-            ? 'Location access denied. Please allow location access in your browser and try again.'
-            : 'Could not get your location. Please try again.'
-        );
-      },
-      { timeout: 10000, enableHighAccuracy: false }
-    );
+      }
+    });
   };
 
   // Debounced search — also re-runs when nearMe toggles
@@ -230,7 +237,12 @@ const ManagerDiscovery = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedGenre, selectedDistrict, searchType, nearMe]);
+  }, [searchQuery, selectedGenre, selectedDistrict, searchType, nearMe, userCoords?.lat, userCoords?.lng]);
+
+  useEffect(() => {
+    if (selectedDistrict !== 'current') return;
+    requestDeviceLocation();
+  }, [selectedDistrict]);
 
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-10 pb-12">
@@ -259,6 +271,7 @@ const ManagerDiscovery = () => {
             className="bg-black/30 border border-white/10 text-white text-xs sm:text-sm rounded-lg px-3 py-2.5 sm:py-3 min-w-[180px] focus:outline-none focus:border-cyan-500"
           >
             <option value="">All Kerala Districts</option>
+            <option value="current">Current Location</option>
             {KERALA_DISTRICTS.map((district) => (
               <option key={district.value} value={district.value}>
                 {district.label}
@@ -305,6 +318,34 @@ const ManagerDiscovery = () => {
           </Button>
         </div>
       </div>
+
+      {showLocationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#121216] p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-white">Enable Location Access</h3>
+            <p className="mt-2 text-sm text-gray-300">
+              Current Location search needs your device location permission.
+              {locationError ? ` ${locationError}` : ''}
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLocationModal(false)}
+                className="flex-1 rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:border-white/40"
+              >
+                Not Now
+              </button>
+              <button
+                type="button"
+                onClick={() => requestDeviceLocation()}
+                className="flex-1 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-black hover:bg-cyan-400"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Genre + Location Filters */}
       <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-hide">

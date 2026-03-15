@@ -26,6 +26,10 @@ const createBookingChatPayload = ({ bookingId, title, location, amount, eventDat
   return `__BOOKING_ACTION__::${bookingId}::${source}::${title || 'Gig Request'}::${location || 'TBD'}::${amount || 0}::${eventDate || ''}`;
 };
 
+const createPaymentChatPayload = ({ bookingId, title, location, amount, eventDate, source }) => {
+  return `__PAYMENT_ACTION__::${bookingId}::${source}::${title || 'Payment Request'}::${location || 'TBD'}::${amount || 0}::${eventDate || ''}`;
+};
+
 const ArtistDashboard = () => {
   const navigate = useNavigate();
   const { supabase, user } = useSupabase();
@@ -45,6 +49,7 @@ const ArtistDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [applyingEventId, setApplyingEventId] = useState(null);
+  const [requestingPaymentId, setRequestingPaymentId] = useState(null);
 
   const loadBookings = async () => {
     if (!user?.id) return;
@@ -53,7 +58,7 @@ const ArtistDashboard = () => {
     try {
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
-        .select('id,event_id,artist_id,organizer_id,status,offer_amount,message,event_date,created_at,events(title,location,venue_name,city,country,event_date,end_date,visibility)')
+        .select('id,event_id,artist_id,organizer_id,status,payment_status,paid_at,offer_amount,message,event_date,created_at,events(title,location,venue_name,city,country,event_date,end_date,visibility,status)')
         .eq('artist_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -130,14 +135,21 @@ const ArtistDashboard = () => {
   const bookingStats = useMemo(() => {
     const pending = bookings.filter((item) => item.status === 'pending').length;
     const accepted = bookings.filter((item) => item.status === 'accepted').length;
-    const totalValue = bookings.reduce((sum, item) => sum + Number(item.offer_amount || 0), 0);
+    const acceptedBookings = bookings.filter((item) => item.status === 'accepted');
+    const totalValue = acceptedBookings.reduce((sum, item) => sum + Number(item.offer_amount || 0), 0);
+    const paidValue = acceptedBookings
+      .filter((item) => item.payment_status === 'paid')
+      .reduce((sum, item) => sum + Number(item.offer_amount || 0), 0);
+    const dueValue = acceptedBookings
+      .filter((item) => item.payment_status !== 'paid')
+      .reduce((sum, item) => sum + Number(item.offer_amount || 0), 0);
     const upcoming = bookings.filter((item) => item.status === 'accepted' && new Date(item.event_date) > new Date()).length;
 
     return [
-      { key: 'revenue', label: 'Revenue Potential', value: formatINR(Math.round(totalValue)), icon: IndianRupee, color: 'text-emerald-400', trend: 'All offers' },
+      { key: 'revenue', label: 'Payment Due', value: formatINR(Math.round(dueValue)), icon: IndianRupee, color: 'text-emerald-400', trend: `${formatINR(Math.round(paidValue))} paid` },
       { key: 'pending', label: 'Pending', value: String(pending).padStart(2, '0'), icon: Zap, color: 'text-yellow-400', trend: 'Awaiting action' },
       { key: 'upcoming', label: 'Upcoming', value: String(upcoming).padStart(2, '0'), icon: TrendingUp, color: 'text-fuchsia-400', trend: 'Future gigs' },
-      { key: 'accepted', label: 'Accepted', value: String(accepted).padStart(2, '0'), icon: Star, color: 'text-cyan-400', trend: 'Confirmed' },
+      { key: 'accepted', label: 'Accepted', value: String(accepted).padStart(2, '0'), icon: Star, color: 'text-cyan-400', trend: `${acceptedBookings.filter((item) => item.payment_status === 'paid').length} paid` },
     ];
   }, [bookings]);
 
@@ -278,6 +290,39 @@ const ArtistDashboard = () => {
       alert(error.message || 'Could not send gig request.');
     } finally {
       setApplyingEventId(null);
+    }
+  };
+
+  const handleRequestPayment = async (booking) => {
+    if (!booking?.id || !user?.id || requestingPaymentId) return;
+
+    setRequestingPaymentId(booking.id);
+    try {
+      const key = await generateKey(user.id, booking.organizer_id);
+      const payload = createPaymentChatPayload({
+        bookingId: booking.id,
+        title: booking.events?.title,
+        location: booking.events?.location,
+        amount: booking.offer_amount,
+        eventDate: booking.event_date,
+        source: 'artist_payment_request',
+      });
+      const encryptedContent = await encryptMessage(`${payload}::Artist requested payment for this completed event.`, key);
+
+      const { error } = await supabase.from('messages').insert({
+        sender_id: user.id,
+        receiver_id: booking.organizer_id,
+        content: encryptedContent,
+        is_read: false,
+      });
+
+      if (error) throw error;
+      alert('Payment request sent to manager.');
+    } catch (error) {
+      console.error('Error requesting payment:', error);
+      alert(error.message || 'Could not send payment request.');
+    } finally {
+      setRequestingPaymentId(null);
     }
   };
 
@@ -452,6 +497,9 @@ const ArtistDashboard = () => {
                       <div className="mb-1 flex flex-wrap items-center gap-2 sm:gap-3">
                         <h3 className="truncate text-base font-bold text-white transition-colors group-hover:text-fuchsia-400 sm:text-lg">{req.events?.title || 'Event Offer'}</h3>
                         <span className={`flex-shrink-0 rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${req.status === 'accepted' ? 'border-emerald-500/30 bg-emerald-500/20 text-emerald-300' : req.status === 'declined' ? 'border-red-500/30 bg-red-500/20 text-red-300' : 'border-white/5 bg-white/10 text-gray-300'}`}>{req.status}</span>
+                        {req.payment_status === 'paid' ? (
+                          <span className="flex-shrink-0 rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-cyan-200 sm:text-[10px]">paid</span>
+                        ) : null}
                       </div>
                       <p className="mb-2 text-xs text-gray-400 sm:text-sm">{req.organizer?.full_name || req.organizer?.username || 'Organizer'}</p>
                       <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-gray-500 sm:gap-4 sm:text-xs">
@@ -465,6 +513,19 @@ const ArtistDashboard = () => {
                   <div className="flex gap-2 sm:gap-3">
                     <button onClick={() => handleBookingStatus(req.id, 'declined')} disabled={updatingId === req.id || req.status !== 'pending'} className="flex-shrink-0 rounded-lg border border-white/5 bg-white/5 p-2 text-gray-400 transition-all hover:bg-red-500/20 hover:text-red-400 disabled:opacity-50 sm:rounded-xl sm:p-3"><X size={16} /></button>
                     <button onClick={() => navigate(`/messages?userId=${req.organizer_id}`)} className="flex-shrink-0 rounded-lg border border-white/5 bg-white/5 p-2 text-gray-400 transition-all hover:bg-white/10 hover:text-white sm:rounded-xl sm:p-3"><MessageCircle size={16} /></button>
+                    {req.status === 'accepted' ? (
+                      <button
+                        onClick={() => handleRequestPayment(req)}
+                        disabled={requestingPaymentId === req.id || req.payment_status === 'paid'}
+                        className="flex-shrink-0 rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-3 py-2 text-xs font-bold text-cyan-200 transition-all hover:bg-cyan-500/25 disabled:opacity-60 sm:rounded-xl sm:px-4 sm:py-3 sm:text-sm"
+                      >
+                        {req.payment_status === 'paid'
+                          ? 'Paid'
+                          : requestingPaymentId === req.id
+                            ? 'Requesting...'
+                            : 'Request Payment'}
+                      </button>
+                    ) : null}
                     <button
                       onClick={() => handleBookingStatus(req.id, 'accepted')}
                       disabled={updatingId === req.id || req.status !== 'pending'}
