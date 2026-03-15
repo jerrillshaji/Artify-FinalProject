@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Zap, MapPin, ArrowUpRight, Navigation } from 'lucide-react';
-import { haversineDistance, getDeviceLocation } from '../lib/geocoding';
+import { geocodeLocation, haversineDistance, getDeviceLocation } from '../lib/geocoding';
 import { KERALA_DISTRICTS, KERALA_DISTRICT_MAP } from '../data/keralaDistricts';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -10,7 +10,7 @@ import { useSupabase } from '../context/SupabaseContext';
 
 const ArtistCollaborationView = () => {
   const navigate = useNavigate();
-  const { supabase, user, profile } = useSupabase();
+  const { supabase, user } = useSupabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
   const [selectedDistrict, setSelectedDistrict] = useState('');
@@ -22,6 +22,8 @@ const ArtistCollaborationView = () => {
   const [gettingLocation, setGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState('');
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [distanceSections, setDistanceSections] = useState([]);
+  const [districtCoordsCache, setDistrictCoordsCache] = useState({});
 
   const getProfilePath = (profile) => {
     if (profile?.id) {
@@ -30,7 +32,29 @@ const ArtistCollaborationView = () => {
     return '/profile';
   };
 
-  const getSearchOriginCoords = () => {
+  const buildDistanceSections = (items) => {
+    const within10 = items.filter((item) => item._distanceKm != null && item._distanceKm <= 10);
+    const within30 = items.filter((item) => item._distanceKm != null && item._distanceKm > 10 && item._distanceKm <= 30);
+    const within50 = items.filter((item) => item._distanceKm != null && item._distanceKm > 30 && item._distanceKm <= 50);
+    const within100 = items.filter((item) => item._distanceKm != null && item._distanceKm > 50 && item._distanceKm <= 100);
+    const within500 = items.filter((item) => item._distanceKm != null && item._distanceKm > 100 && item._distanceKm <= 500);
+    const within1000 = items.filter((item) => item._distanceKm != null && item._distanceKm > 500 && item._distanceKm <= 1000);
+
+    return [
+      { key: '10', title: 'Within 10 kms', items: within10 },
+      { key: '30', title: '10 to 30 kms', items: within30 },
+      { key: '50', title: '30 to 50 kms', items: within50 },
+      { key: '100', title: '50 to 100 kms', items: within100 },
+      { key: '500', title: '100 to 500 kms', items: within500 },
+      { key: '1000', title: '500 to 1000 kms', items: within1000 },
+    ].filter((section) => section.items.length > 0);
+  };
+
+  const getSearchOriginCoords = async () => {
+    if (!selectedDistrict) {
+      return null;
+    }
+
     if (selectedDistrict === 'current') {
       if (userCoords?.lat != null && userCoords?.lng != null) {
         return userCoords;
@@ -39,12 +63,24 @@ const ArtistCollaborationView = () => {
     }
 
     if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
+      const cached = districtCoordsCache[selectedDistrict];
+      if (cached?.lat != null && cached?.lng != null) {
+        return cached;
+      }
+
       const district = KERALA_DISTRICT_MAP[selectedDistrict];
-      return { lat: district.latitude, lng: district.longitude };
+      const geocoded = await geocodeLocation(`${district.label}, Kerala, India`);
+      const fallback = { lat: district.latitude, lng: district.longitude };
+      const resolved = geocoded || fallback;
+
+      setDistrictCoordsCache((prev) => ({
+        ...prev,
+        [selectedDistrict]: resolved,
+      }));
+
+      return resolved;
     }
-    if (profile?.latitude != null && profile?.longitude != null) {
-      return { lat: profile.latitude, lng: profile.longitude };
-    }
+
     return null;
   };
 
@@ -131,10 +167,6 @@ const ArtistCollaborationView = () => {
         query = query.eq('role', 'manager');
       }
 
-      if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
-        query = query.ilike('location', `%${KERALA_DISTRICT_MAP[selectedDistrict].label}%`);
-      }
-
       if (searchQuery.trim()) {
         const normalized = searchQuery.trim();
         const searchConditions = [
@@ -161,7 +193,13 @@ const ArtistCollaborationView = () => {
       if (error) throw error;
 
       let processed = data || [];
-      const searchOrigin = getSearchOriginCoords();
+      const searchOrigin = await getSearchOriginCoords();
+
+      if (selectedDistrict && !searchOrigin) {
+        setResults([]);
+        setDistanceSections([]);
+        return;
+      }
 
       if (searchOrigin) {
         processed = processed
@@ -177,6 +215,11 @@ const ArtistCollaborationView = () => {
             const db = b._distanceKm ?? Infinity;
             return da - db;
           });
+
+        processed = processed.filter((item) => item._distanceKm != null && item._distanceKm <= 1000);
+        setDistanceSections(buildDistanceSections(processed));
+      } else {
+        setDistanceSections([]);
       }
 
       setResults(processed);
@@ -334,41 +377,92 @@ const ArtistCollaborationView = () => {
       )}
 
       {!loading && hasSearched && results.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {results.map((profile) => (
-            <div
-              key={profile.id}
-              onClick={() => navigate(getProfilePath(profile))}
-              className="bg-white/5 backdrop-blur-xl border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-white/20 hover:bg-white/10 transition-all group cursor-pointer relative overflow-hidden"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <img
-                  src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
-                  alt={profile.full_name}
-                  className="w-12 h-12 rounded-full object-cover border border-white/10"
-                />
-                <div>
-                  <h3 className="font-bold text-white">{profile.full_name}</h3>
-                  <p className="text-xs text-gray-400">
-                    {profile.role === 'artist' ? 'Artist' : 'Manager'}
-                  </p>
+        <>
+          {selectedDistrict && distanceSections.length > 0 ? (
+            <div className="space-y-8">
+              {distanceSections.map((section) => (
+                <div key={section.key} className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <h3 className="text-lg font-black text-white tracking-tight">{section.title}</h3>
+                    <Badge color="gray">{section.items.length}</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {section.items.map((profile) => (
+                      <div
+                        key={profile.id}
+                        onClick={() => navigate(getProfilePath(profile))}
+                        className="bg-white/5 backdrop-blur-xl border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-white/20 hover:bg-white/10 transition-all group cursor-pointer relative overflow-hidden"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <img
+                            src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                            alt={profile.full_name}
+                            className="w-12 h-12 rounded-full object-cover border border-white/10"
+                          />
+                          <div>
+                            <h3 className="font-bold text-white">{profile.full_name}</h3>
+                            <p className="text-xs text-gray-400">
+                              {profile.role === 'artist' ? 'Artist' : 'Manager'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                          <MapPin size={14} /> {profile.location || 'Location not set'}
+                        </div>
+                        {profile._distanceKm != null && (
+                          <div className={`flex items-center gap-2 text-xs mb-4 ${profile._distanceKm != null ? 'text-cyan-400' : 'text-gray-500'}`}>
+                            <Navigation size={14} />
+                            {profile._distanceKm != null ? formatDistance(profile._distanceKm) : 'Distance unavailable'}
+                          </div>
+                        )}
+                        <div className="pt-4 border-t border-white/5">
+                          <span className="text-xs font-bold text-white group-hover:underline">View Profile</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
-                <MapPin size={14} /> {profile.location || 'Location not set'}
-              </div>
-              {profile._distanceKm != null && (
-                <div className={`flex items-center gap-2 text-xs mb-4 ${profile._distanceKm != null ? 'text-cyan-400' : 'text-gray-500'}`}>
-                  <Navigation size={14} />
-                  {profile._distanceKm != null ? formatDistance(profile._distanceKm) : 'Distance unavailable'}
-                </div>
-              )}
-              <div className="pt-4 border-t border-white/5">
-                <span className="text-xs font-bold text-white group-hover:underline">View Profile</span>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {results.map((profile) => (
+                <div
+                  key={profile.id}
+                  onClick={() => navigate(getProfilePath(profile))}
+                  className="bg-white/5 backdrop-blur-xl border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-white/20 hover:bg-white/10 transition-all group cursor-pointer relative overflow-hidden"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <img
+                      src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                      alt={profile.full_name}
+                      className="w-12 h-12 rounded-full object-cover border border-white/10"
+                    />
+                    <div>
+                      <h3 className="font-bold text-white">{profile.full_name}</h3>
+                      <p className="text-xs text-gray-400">
+                        {profile.role === 'artist' ? 'Artist' : 'Manager'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                    <MapPin size={14} /> {profile.location || 'Location not set'}
+                  </div>
+                  {profile._distanceKm != null && (
+                    <div className={`flex items-center gap-2 text-xs mb-4 ${profile._distanceKm != null ? 'text-cyan-400' : 'text-gray-500'}`}>
+                      <Navigation size={14} />
+                      {profile._distanceKm != null ? formatDistance(profile._distanceKm) : 'Distance unavailable'}
+                    </div>
+                  )}
+                  <div className="pt-4 border-t border-white/5">
+                    <span className="text-xs font-bold text-white group-hover:underline">View Profile</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Collaborations List */}
