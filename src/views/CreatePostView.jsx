@@ -163,7 +163,7 @@ const CreatePostView = () => {
 
       if (insertError) throw insertError;
 
-      navigate('/feed');
+      navigate('/community');
     } catch (submitError) {
       console.error('Error creating post:', submitError);
 
@@ -323,7 +323,7 @@ const CreatePostView = () => {
               <Send size={16} />
               {saving ? 'Publishing...' : 'Publish Post'}
             </Button>
-            <Button type="button" variant="secondary" className="px-6" onClick={() => navigate('/feed')}>
+            <Button type="button" variant="secondary" className="px-6" onClick={() => navigate('/community')}>
               Cancel
             </Button>
           </div>

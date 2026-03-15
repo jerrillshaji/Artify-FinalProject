@@ -186,7 +186,7 @@ const Register = () => {
       }
 
       // Email confirmation is disabled; proceed directly
-      navigate('/feed');
+      navigate('/community');
       return;
     } catch (err) {
       console.error('Registration error:', err);
@@ -498,3 +498,4 @@ const Register = () => {
 };
 
 export default Register;
+

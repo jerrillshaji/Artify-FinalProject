@@ -1,8 +1,23 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MoreHorizontal, Heart, Share2, TrendingUp, Plus, MapPin, RefreshCw, Users } from 'lucide-react';
 import { useSupabase } from '../context/SupabaseContext';
 import Button from '../components/ui/Button';
+
+const withCacheBuster = (imageUrl, version) => {
+  if (!imageUrl || imageUrl.startsWith('data:') || !version) {
+    return imageUrl;
+  }
+
+  const separator = imageUrl.includes('?') ? '&' : '?';
+  return `${imageUrl}${separator}v=${encodeURIComponent(version)}`;
+};
+
+const resolveAvatarUrl = (profileLike, fallbackVersion) => {
+  const baseAvatar = profileLike?.avatar_url || (profileLike?.role === 'artist' ? profileLike?.portfolio_images?.[0] : null);
+  const version = profileLike?.updated_at || fallbackVersion;
+  return withCacheBuster(baseAvatar, version) || `https://i.pravatar.cc/150?u=${profileLike?.id || 'artify'}`;
+};
 
 const POST_SELECT = `
   id,
@@ -16,8 +31,11 @@ const POST_SELECT = `
     id,
     username,
     full_name,
+    role,
     avatar_url,
-    is_verified
+    updated_at,
+    is_verified,
+    artists (stage_name)
   )
 `;
 
@@ -41,7 +59,7 @@ const formatRelativeTime = (timestamp) => {
 
 const CommunityFeed = () => {
   const navigate = useNavigate();
-  const { supabase, user } = useSupabase();
+  const { supabase, user, profile: sharedProfile } = useSupabase();
   const [featuredArtists, setFeaturedArtists] = useState([]);
   const [featuredBand, setFeaturedBand] = useState(null);
   const [feedPosts, setFeedPosts] = useState([]);
@@ -50,6 +68,7 @@ const CommunityFeed = () => {
   const [feedError, setFeedError] = useState('');
   const [followingCount, setFollowingCount] = useState(0);
   const [copiedPostId, setCopiedPostId] = useState(null);
+  const avatarCacheSeed = useMemo(() => Date.now().toString(), []);
 
   const loadFeed = useCallback(async () => {
     if (!user?.id) return;
@@ -68,7 +87,7 @@ const CommunityFeed = () => {
           .maybeSingle(),
         supabase
           .from('profiles')
-          .select('id, username, full_name, avatar_url')
+          .select('id, username, full_name, avatar_url, updated_at, artists (stage_name)')
           .eq('role', 'artist')
           .order('created_at', { ascending: false })
           .limit(6),
@@ -136,6 +155,21 @@ const CommunityFeed = () => {
     loadFeed();
   }, [loadFeed]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`feed-profiles-${user.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => {
+        loadFeed();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadFeed, supabase, user?.id]);
+
   const getArtistProfilePath = (artist) => {
     const username = artist?.username?.replace('@', '')?.toLowerCase()?.trim();
     if (username && /^[a-z0-9_]{3,}$/.test(username)) {
@@ -144,9 +178,16 @@ const CommunityFeed = () => {
     return artist?.id ? `/profile?id=${artist.id}` : '/profile';
   };
 
+  const visibleFeaturedArtists = featuredArtists.map((artist) => {
+    if (artist.id === sharedProfile?.id) {
+      return { ...artist, ...sharedProfile };
+    }
+    return artist;
+  });
+
   const handleSharePost = async (post) => {
     const profileLink = `${window.location.origin}/posts/${post.id}`;
-    const shareText = `${post.author?.full_name || 'Artify user'} posted: ${post.content}`;
+    const shareText = `${displayName} posted: ${post.content}`;
 
     try {
       if (navigator.share) {
@@ -175,14 +216,19 @@ const CommunityFeed = () => {
       location,
       tags,
     } = post;
+    const authorAvatar = resolveAvatarUrl(author || { id: authorId }, avatarCacheSeed);
+    const displayName = author?.role === 'artist'
+      ? (author?.artists?.[0]?.stage_name || author?.full_name || 'Unknown user')
+      : (author?.full_name || 'Unknown user');
 
     return (
       <div key={post.id} className="break-inside-avoid overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl transition-all duration-300 hover:border-white/20">
         <div className="flex items-center justify-between bg-black/20 p-3 sm:p-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <img
-              src={author?.avatar_url || `https://i.pravatar.cc/150?u=${author?.id || authorId}`}
-              alt={author?.full_name || 'Artify user'}
+              key={authorAvatar}
+              src={authorAvatar}
+              alt={displayName}
               onClick={() => navigate(getArtistProfilePath(author || { id: authorId }))}
               className="h-9 w-9 cursor-pointer rounded-full object-cover ring-2 ring-white/10 sm:h-10 sm:w-10"
             />
@@ -192,7 +238,7 @@ const CommunityFeed = () => {
                 onClick={() => navigate(getArtistProfilePath(author || { id: authorId }))}
                 className="flex items-center gap-2 text-left font-bold text-white transition-colors hover:text-fuchsia-400"
               >
-                <span className="text-xs sm:text-sm">{author?.full_name || 'Unknown user'}</span>
+                <span className="text-xs sm:text-sm">{displayName}</span>
                 {author?.is_verified && <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></span>}
               </button>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-gray-400 sm:text-xs">
@@ -306,7 +352,7 @@ const CommunityFeed = () => {
               <p className="mt-2 text-2xl font-black text-white">{feedPosts.length}</p>
             </div>
           </div>
-          <Button className="mt-auto w-full" onClick={() => navigate('/feed/create')}>
+          <Button className="mt-auto w-full" onClick={() => navigate('/community/create')}>
             <Plus size={16} />
             Create Post
           </Button>
@@ -314,26 +360,32 @@ const CommunityFeed = () => {
       </div>
 
       <div className="flex gap-3 overflow-x-auto px-2 pb-2 scrollbar-hide sm:gap-4 md:gap-6">
-        {featuredArtists.map((artist, i) => (
-          <button
-            key={artist.id}
-            onClick={() => navigate(`/profile?id=${artist.id}`)}
-            className="group flex shrink-0 flex-col items-center gap-2 sm:gap-3"
-          >
-            <div className="h-14 w-14 rounded-full bg-linear-to-tr from-fuchsia-500 via-purple-500 to-cyan-500 p-0.5 shadow-lg transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] sm:h-16 sm:w-16 md:h-20 md:w-20 md:p-1">
-              <div className="h-full w-full rounded-full bg-black p-0.5 md:p-1">
-                <img
-                  src={artist.avatar_url || `https://i.pravatar.cc/150?u=${artist.id}`}
-                  alt={artist.full_name || artist.username || 'Artist'}
-                  className="h-full w-full rounded-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0"
-                />
+        {visibleFeaturedArtists.map((artist, i) => {
+          const artistAvatar = resolveAvatarUrl(artist, avatarCacheSeed);
+          const featuredDisplayName = artist.stage_name || artist.artists?.[0]?.stage_name || artist.full_name || artist.username || `artist_${i}`;
+
+          return (
+            <button
+              key={artist.id}
+              onClick={() => navigate(`/profile?id=${artist.id}`)}
+              className="group flex shrink-0 flex-col items-center gap-2 sm:gap-3"
+            >
+              <div className="h-14 w-14 rounded-full bg-linear-to-tr from-fuchsia-500 via-purple-500 to-cyan-500 p-0.5 shadow-lg transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] sm:h-16 sm:w-16 md:h-20 md:w-20 md:p-1">
+                <div className="h-full w-full rounded-full bg-black p-0.5 md:p-1">
+                  <img
+                    key={artistAvatar}
+                    src={artistAvatar}
+                    alt={artist.artists?.[0]?.stage_name || artist.full_name || artist.username || 'Artist'}
+                    className="h-full w-full rounded-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0"
+                  />
+                </div>
               </div>
-            </div>
-            <span className="text-[10px] font-bold tracking-wide text-gray-500 transition-colors group-hover:text-white sm:text-xs">
-              @{artist.username || `artist_${i}`}
-            </span>
-          </button>
-        ))}
+              <span className="text-[10px] font-bold tracking-wide text-gray-500 transition-colors group-hover:text-white sm:text-xs">
+                {featuredDisplayName}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <section className="space-y-4">
@@ -372,7 +424,7 @@ const CommunityFeed = () => {
               Follow more artists or managers to build your feed, or publish your own update now and start the momentum.
             </p>
             <div className="mt-5 flex justify-center">
-              <Button onClick={() => navigate('/feed/create')}>
+              <Button onClick={() => navigate('/community/create')}>
                 <Plus size={16} />
                 Create Your First Post
               </Button>

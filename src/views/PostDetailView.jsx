@@ -115,7 +115,7 @@ const PostDetailView = () => {
           <h1 className="text-2xl font-black text-white">{error || 'Post not found.'}</h1>
           <p className="mt-3 text-sm text-gray-400">The post may have been deleted or is not available yet.</p>
           <div className="mt-6 flex justify-center">
-            <Button onClick={() => navigate('/feed')}>Back To Feed</Button>
+            <Button onClick={() => navigate('/community')}>Back To Community</Button>
           </div>
         </div>
       </div>

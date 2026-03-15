@@ -87,7 +87,7 @@ const Login = () => {
       }
 
       // Successful login - redirect to feed
-      navigate('/feed');
+      navigate('/community');
     } catch (err) {
             const message = err.message || 'Failed to sign in';
             const lowerMessage = message.toLowerCase();
@@ -276,3 +276,4 @@ const Login = () => {
 };
 
 export default Login;
+

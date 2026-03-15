@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Star, Camera, X, ImagePlus, Plus, Grid3X3 } from 'lucide-react';
+import { Check, Star, Camera, X, ImagePlus, Plus, Grid3X3, Eye } from 'lucide-react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaInstagram, FaFacebook, FaWhatsapp, FaCopy } from 'react-icons/fa';
 import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
+
+const formatGenreLabel = (genre) =>
+  genre
+    ? genre.toLowerCase() === 'dj'
+      ? 'DJ'
+      : genre
+          .split(/[-\s]+/)
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ')
+    : '';
 
 const ProfileView = ({ role }) => {
   const { supabase, user } = useSupabase();
@@ -250,6 +261,8 @@ const ProfileView = ({ role }) => {
     setShowConnectionsModal(false);
     navigate(getProfilePath(targetProfile));
   };
+
+  const profileGenres = Array.isArray(profile?.genres) ? profile.genres.filter(Boolean) : [];
 
   const handleFollowToggle = async () => {
     if (!user || !profile?.id || user.id === profile.id || followLoading) {
@@ -529,7 +542,7 @@ const ProfileView = ({ role }) => {
             {isOwnProfile && user && (
               <>
                 <Button variant="secondary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/profile/edit')}>Edit Profile</Button>
-                <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/feed/create')}>Create Post</Button>
+                <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/community/create')}>Create Post</Button>
               </>
             )}
             {!isOwnProfile && (
@@ -605,6 +618,25 @@ const ProfileView = ({ role }) => {
               </span>
             </div>
           </div>
+          {profile?.role === 'artist' && (
+            <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/5">
+              <h3 className="text-gray-400 font-bold uppercase tracking-widest text-[10px] sm:text-xs mb-3 sm:mb-4">Genres</h3>
+              {profileGenres.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {profileGenres.map((genre) => (
+                    <span
+                      key={genre}
+                      className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200"
+                    >
+                      {formatGenreLabel(genre)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">No genres added yet.</p>
+              )}
+            </div>
+          )}
         </div>
         <div className="md:col-span-2">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
@@ -613,7 +645,7 @@ const ProfileView = ({ role }) => {
               <span>Posts</span>
             </h3>
             {isOwnProfile && user && (
-              <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/feed/create')}>
+              <Button variant="primary" className="px-3 sm:px-4 text-xs sm:text-sm py-1.5 sm:py-2" onClick={() => navigate('/community/create')}>
                 <Plus size={14} />
                 Create Post
               </Button>
@@ -648,7 +680,7 @@ const ProfileView = ({ role }) => {
             ) : isOwnProfile ? (
               <button
                 type="button"
-                onClick={() => navigate('/feed/create')}
+                onClick={() => navigate('/community/create')}
                 className="col-span-3 flex min-h-55 flex-col items-center justify-center rounded-2xl border border-dashed border-fuchsia-500/30 bg-white/5 p-12 text-center transition-all duration-300 hover:border-fuchsia-400 hover:bg-fuchsia-500/10 sm:rounded-3xl"
               >
                 <Plus size={32} className="mb-4 text-fuchsia-400" />
@@ -682,17 +714,19 @@ const ProfileView = ({ role }) => {
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
               >
                 <Eye size={16} />
-                <span>Show background picture</span>
+                <span>Show background image</span>
               </button>
-              {isOwnProfile && (
-                <button
-                  type="button"
-                  onClick={handleChangeBackground}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
-                >
-                  <ImagePlus size={16} />
-                  <span>Change background picture</span>
-                </button>
+              <button
+                type="button"
+                onClick={handleChangeBackground}
+                disabled={!isOwnProfile || backgroundUploading}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ImagePlus size={16} />
+                <span>Upload background picture</span>
+              </button>
+              {!isOwnProfile && (
+                <p className="px-1 text-xs text-gray-500">You can upload a background picture only on your own profile.</p>
               )}
             </div>
           </div>
