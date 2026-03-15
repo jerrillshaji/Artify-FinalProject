@@ -526,22 +526,28 @@ const ArtistDashboard = () => {
                             : 'Request Payment'}
                       </button>
                     ) : null}
-                    <button
-                      onClick={() => handleBookingStatus(req.id, 'accepted')}
-                      disabled={updatingId === req.id || req.status !== 'pending'}
-                      className={`flex-shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition-all sm:rounded-xl sm:px-5 sm:py-3 sm:text-sm ${
-                        req.status === 'accepted'
-                          ? 'cursor-default border border-fuchsia-400/40 bg-fuchsia-500/20 text-fuchsia-100'
-                          : req.status === 'pending'
-                            ? 'bg-white text-black hover:bg-fuchsia-400 hover:text-white hover:shadow-[0_0_20px_rgba(192,38,211,0.5)]'
-                            : 'border border-white/10 bg-white/5 text-gray-300'
-                      } disabled:opacity-70`}
-                    >
-                      <span className="inline-flex items-center gap-1">
-                        <Check size={14} />
-                        {updatingId === req.id ? 'Saving...' : req.status === 'accepted' ? 'Accepted' : req.status === 'declined' ? 'Declined' : 'Accept'}
-                      </span>
-                    </button>
+                    {req.events?.visibility === 'public' ? (
+                      req.status === 'pending' ? (
+                        <span className="flex-shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-gray-500 sm:rounded-xl sm:px-4 sm:py-3 sm:text-sm">Awaiting Manager</span>
+                      ) : null
+                    ) : (
+                      <button
+                        onClick={() => handleBookingStatus(req.id, 'accepted')}
+                        disabled={updatingId === req.id || req.status !== 'pending'}
+                        className={`flex-shrink-0 rounded-lg px-3 py-2 text-xs font-bold transition-all sm:rounded-xl sm:px-5 sm:py-3 sm:text-sm ${
+                          req.status === 'accepted'
+                            ? 'cursor-default border border-fuchsia-400/40 bg-fuchsia-500/20 text-fuchsia-100'
+                            : req.status === 'pending'
+                              ? 'bg-white text-black hover:bg-fuchsia-400 hover:text-white hover:shadow-[0_0_20px_rgba(192,38,211,0.5)]'
+                              : 'border border-white/10 bg-white/5 text-gray-300'
+                        } disabled:opacity-70`}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <Check size={14} />
+                          {updatingId === req.id ? 'Saving...' : req.status === 'accepted' ? 'Accepted' : req.status === 'declined' ? 'Declined' : 'Accept'}
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )) : <div className="p-10 text-center text-gray-400">No booking offers yet.</div>}
