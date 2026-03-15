@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Star, Check, ChevronRight, MapPin, Music, Briefcase, Navigation } from 'lucide-react';
 import { haversineDistance } from '../lib/geocoding';
 import { formatINR } from '../lib/currency';
+import { KERALA_DISTRICTS, KERALA_DISTRICT_MAP } from '../data/keralaDistricts';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
@@ -31,9 +32,10 @@ const formatGenreLabel = (genre) => {
 
 const ManagerDiscovery = () => {
   const navigate = useNavigate();
-  const { supabase, user } = useSupabase();
+  const { supabase, user, profile } = useSupabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
+  const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -57,8 +59,22 @@ const ManagerDiscovery = () => {
     return `${Math.round(km)} km away`;
   };
 
+  const getSearchOriginCoords = () => {
+    if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
+      const district = KERALA_DISTRICT_MAP[selectedDistrict];
+      return { lat: district.latitude, lng: district.longitude };
+    }
+    if (profile?.latitude != null && profile?.longitude != null) {
+      return { lat: profile.latitude, lng: profile.longitude };
+    }
+    if (userCoords?.lat != null && userCoords?.lng != null) {
+      return userCoords;
+    }
+    return null;
+  };
+
   const performSearch = async () => {
-    const hasFilters = searchQuery.trim() || selectedGenre || nearMe;
+    const hasFilters = searchQuery.trim() || selectedGenre || selectedDistrict || nearMe;
     if (!hasFilters) {
       setResults([]);
       setHasSearched(false);
@@ -77,24 +93,36 @@ const ManagerDiscovery = () => {
           managers (*)
         `);
 
-      // Build search conditions
-      const conditions = [];
+      if (user?.id) {
+        query = query.neq('id', user.id);
+      }
 
-      if (searchQuery.trim()) {
-        conditions.push(`username.ilike.%${searchQuery.trim().toLowerCase()}%`);
-        conditions.push(`full_name.ilike.%${searchQuery.trim()}%`);
-        conditions.push(`location.ilike.%${searchQuery.trim()}%`);
+      if (searchType === 'artist') {
+        query = query.eq('role', 'artist');
+      } else if (searchType === 'manager') {
+        query = query.eq('role', 'manager');
+      }
+
+      if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
+        query = query.ilike('location', `%${KERALA_DISTRICT_MAP[selectedDistrict].label}%`);
       }
 
       if (selectedGenre) {
+        if (searchType === 'manager') {
+          setResults([]);
+          setLoading(false);
+          return;
+        }
+
         const { data: artistsWithGenre } = await supabase
           .from('artists')
           .select('id')
           .contains('genres', [selectedGenre.toLowerCase()]);
 
         if (artistsWithGenre && artistsWithGenre.length > 0) {
-          const artistIds = artistsWithGenre.map(a => a.id);
-          conditions.push(`id.in.(${artistIds.join(',')})`);
+          const artistIds = artistsWithGenre.map((a) => a.id);
+          query = query.in('id', artistIds);
+          query = query.eq('role', 'artist');
         } else {
           setResults([]);
           setLoading(false);
@@ -102,15 +130,25 @@ const ManagerDiscovery = () => {
         }
       }
 
-      // Filter by type
-      if (searchType === 'artist') {
-        conditions.push(`role.eq.artist`);
-      } else if (searchType === 'manager') {
-        conditions.push(`role.eq.manager`);
-      }
+      if (searchQuery.trim()) {
+        const normalized = searchQuery.trim();
+        const searchConditions = [
+          `username.ilike.%${normalized.toLowerCase()}%`,
+          `full_name.ilike.%${normalized}%`,
+          `location.ilike.%${normalized}%`,
+        ];
 
-      if (conditions.length > 0) {
-        query = query.or(conditions.join(','));
+        const { data: artistsMatchingSearch } = await supabase
+          .from('artists')
+          .select('id')
+          .or(`stage_name.ilike.%${normalized}%,tags.cs.{${normalized.toLowerCase()}}`);
+
+        if (artistsMatchingSearch?.length) {
+          const artistIds = artistsMatchingSearch.map((a) => a.id);
+          searchConditions.push(`id.in.(${artistIds.join(',')})`);
+        }
+
+        query = query.or(searchConditions.join(','));
       }
 
       // Fetch more results when sorting by distance so we have enough to rank
@@ -119,14 +157,17 @@ const ManagerDiscovery = () => {
 
       let processed = data || [];
 
-      // Sort by distance when Near Me is active
-      if (nearMe && userCoords) {
+      const searchOrigin = getSearchOriginCoords();
+      const shouldSortByDistance = Boolean(searchOrigin);
+
+      // Sort results by nearest coordinates from the signed-in user.
+      if (shouldSortByDistance && searchOrigin) {
         processed = processed
           .map((p) => ({
             ...p,
             _distanceKm:
               p.latitude != null && p.longitude != null
-                ? haversineDistance(userCoords.lat, userCoords.lng, p.latitude, p.longitude)
+                ? haversineDistance(searchOrigin.lat, searchOrigin.lng, p.latitude, p.longitude)
                 : null,
           }))
           .sort((a, b) => {
@@ -183,13 +224,13 @@ const ManagerDiscovery = () => {
   // Debounced search — also re-runs when nearMe toggles
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchQuery.trim() || selectedGenre || nearMe) {
+      if (searchQuery.trim() || selectedGenre || selectedDistrict || nearMe) {
         performSearch();
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedGenre, searchType, nearMe]);
+  }, [searchQuery, selectedGenre, selectedDistrict, searchType, nearMe]);
 
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-10 pb-12">
@@ -211,6 +252,19 @@ const ManagerDiscovery = () => {
               className="w-full bg-transparent border-none text-white text-sm sm:text-lg px-2 sm:px-4 py-3 sm:py-4 focus:outline-none focus:ring-0 placeholder:text-gray-600 min-w-0"
             />
           </div>
+
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            className="bg-black/30 border border-white/10 text-white text-xs sm:text-sm rounded-lg px-3 py-2.5 sm:py-3 min-w-[180px] focus:outline-none focus:border-cyan-500"
+          >
+            <option value="">All Kerala Districts</option>
+            {KERALA_DISTRICTS.map((district) => (
+              <option key={district.value} value={district.value}>
+                {district.label}
+              </option>
+            ))}
+          </select>
 
           {/* Search Type Filter */}
           <div className="flex gap-1 sm:gap-2 p-1 bg-black/20 rounded-xl">
@@ -370,6 +424,10 @@ const ManagerDiscovery = () => {
                 <p className="text-fuchsia-400 font-medium text-xs sm:text-sm mb-1 flex items-center gap-1 flex-wrap">
                   <span className="truncate">@{profile.username}</span>
                 </p>
+                <p className="text-gray-400 font-medium text-xs sm:text-sm mb-1 flex items-center gap-1 flex-wrap">
+                  <MapPin size={12} className="flex-shrink-0" />
+                  <span className="truncate">{profile.location || 'Location not set'}</span>
+                </p>
                 <p className="text-gray-400 font-medium text-xs sm:text-sm mb-4 sm:mb-6 flex items-center gap-1 flex-wrap">
                   <span className="truncate">
                     {profile.role === 'artist' 
@@ -390,12 +448,7 @@ const ManagerDiscovery = () => {
                       {tag}
                     </span>
                   ))}
-                  {profile.location && (
-                    <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-white/5 text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded border border-white/5 flex items-center gap-1">
-                      <MapPin size={10} /> {profile.location}
-                    </span>
-                  )}
-                  {nearMe && (
+                  {profile._distanceKm != null && (
                     <span
                       className={`px-2 sm:px-3 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded border flex items-center gap-1 ${
                         profile._distanceKm != null

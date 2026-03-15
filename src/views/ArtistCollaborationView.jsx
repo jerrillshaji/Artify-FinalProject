@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Zap, MapPin, ArrowUpRight } from 'lucide-react';
+import { Search, Zap, MapPin, ArrowUpRight, Navigation } from 'lucide-react';
+import { haversineDistance } from '../lib/geocoding';
+import { KERALA_DISTRICTS, KERALA_DISTRICT_MAP } from '../data/keralaDistricts';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
@@ -8,9 +10,10 @@ import { useSupabase } from '../context/SupabaseContext';
 
 const ArtistCollaborationView = () => {
   const navigate = useNavigate();
-  const { supabase, user } = useSupabase();
+  const { supabase, user, profile } = useSupabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
+  const [selectedDistrict, setSelectedDistrict] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -21,6 +24,24 @@ const ArtistCollaborationView = () => {
       return `/profile?id=${profile.id}`;
     }
     return '/profile';
+  };
+
+  const getSearchOriginCoords = () => {
+    if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
+      const district = KERALA_DISTRICT_MAP[selectedDistrict];
+      return { lat: district.latitude, lng: district.longitude };
+    }
+    if (profile?.latitude != null && profile?.longitude != null) {
+      return { lat: profile.latitude, lng: profile.longitude };
+    }
+    return null;
+  };
+
+  const formatDistance = (km) => {
+    if (km == null || !isFinite(km)) return null;
+    if (km < 1) return `${Math.round(km * 1000)} m away`;
+    if (km < 10) return `${km.toFixed(1)} km away`;
+    return `${Math.round(km)} km away`;
   };
 
   // Load collaborations
@@ -50,7 +71,7 @@ const ArtistCollaborationView = () => {
   }, []);
 
   const performSearch = async () => {
-    if (!searchQuery.trim()) {
+    if (!searchQuery.trim() && !selectedDistrict) {
       setResults([]);
       setHasSearched(false);
       return;
@@ -68,47 +89,65 @@ const ArtistCollaborationView = () => {
           managers (*)
         `);
 
-      // Build search conditions
-      const conditions = [];
-      
+      if (user?.id) {
+        query = query.neq('id', user.id);
+      }
+
+      if (searchType === 'artist') {
+        query = query.eq('role', 'artist');
+      } else if (searchType === 'manager') {
+        query = query.eq('role', 'manager');
+      }
+
+      if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
+        query = query.ilike('location', `%${KERALA_DISTRICT_MAP[selectedDistrict].label}%`);
+      }
+
       if (searchQuery.trim()) {
-        const searchTerm = searchQuery.trim().toLowerCase();
-        
-        // Search by username (partial match, case-insensitive)
-        conditions.push(`username.ilike.%${searchTerm}%`);
-        // Search by full name (partial match, case-insensitive)
-        conditions.push(`full_name.ilike.%${searchQuery.trim()}%`);
-        // Search by location (partial match, case-insensitive)
-        conditions.push(`location.ilike.%${searchQuery.trim()}%`);
-        
-        // Also search in artists table (stage name and tags)
+        const normalized = searchQuery.trim();
+        const searchConditions = [
+          `username.ilike.%${normalized.toLowerCase()}%`,
+          `full_name.ilike.%${normalized}%`,
+          `location.ilike.%${normalized}%`,
+        ];
+
         const { data: artistsData } = await supabase
           .from('artists')
           .select('id')
-          .or(`stage_name.ilike.%${searchQuery.trim()}%,tags.cs.{${searchTerm}}`);
-        
-        if (artistsData && artistsData.length > 0) {
-          const artistIds = artistsData.map(a => a.id);
-          conditions.push(`id.in.(${artistIds.join(',')})`);
+          .or(`stage_name.ilike.%${normalized}%,tags.cs.{${normalized.toLowerCase()}}`);
+
+        if (artistsData?.length) {
+          const artistIds = artistsData.map((a) => a.id);
+          searchConditions.push(`id.in.(${artistIds.join(',')})`);
         }
+
+        query = query.or(searchConditions.join(','));
       }
 
-      // Filter by type
-      if (searchType === 'artist') {
-        conditions.push(`role.eq.artist`);
-      } else if (searchType === 'manager') {
-        conditions.push(`role.eq.manager`);
-      }
-
-      if (conditions.length > 0) {
-        query = query.or(conditions.join(','));
-      }
-
-      const { data, error } = await query.limit(50);
+      const { data, error } = await query.limit(100);
 
       if (error) throw error;
 
-      setResults(data || []);
+      let processed = data || [];
+      const searchOrigin = getSearchOriginCoords();
+
+      if (searchOrigin) {
+        processed = processed
+          .map((p) => ({
+            ...p,
+            _distanceKm:
+              p.latitude != null && p.longitude != null
+                ? haversineDistance(searchOrigin.lat, searchOrigin.lng, p.latitude, p.longitude)
+                : null,
+          }))
+          .sort((a, b) => {
+            const da = a._distanceKm ?? Infinity;
+            const db = b._distanceKm ?? Infinity;
+            return da - db;
+          });
+      }
+
+      setResults(processed);
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
@@ -120,13 +159,13 @@ const ArtistCollaborationView = () => {
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchQuery.trim()) {
+      if (searchQuery.trim() || selectedDistrict) {
         performSearch();
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchType]);
+  }, [searchQuery, selectedDistrict, searchType]);
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-12">
@@ -148,6 +187,19 @@ const ArtistCollaborationView = () => {
               className="w-full bg-transparent border-none text-white text-sm sm:text-lg px-2 sm:px-4 py-3 sm:py-4 focus:outline-none focus:ring-0 placeholder:text-gray-600 min-w-0"
             />
           </div>
+
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            className="bg-black/30 border border-white/10 text-white text-xs sm:text-sm rounded-lg px-3 py-2.5 sm:py-3 min-w-[180px] focus:outline-none focus:border-cyan-500"
+          >
+            <option value="">All Kerala Districts</option>
+            {KERALA_DISTRICTS.map((district) => (
+              <option key={district.value} value={district.value}>
+                {district.label}
+              </option>
+            ))}
+          </select>
 
           {/* Search Type Filter */}
           <div className="flex gap-1 sm:gap-2 p-1 bg-black/20 rounded-xl">
@@ -236,9 +288,13 @@ const ArtistCollaborationView = () => {
                   </p>
                 </div>
               </div>
-              {profile.location && (
-                <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
-                  <MapPin size={14} /> {profile.location}
+              <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                <MapPin size={14} /> {profile.location || 'Location not set'}
+              </div>
+              {profile._distanceKm != null && (
+                <div className={`flex items-center gap-2 text-xs mb-4 ${profile._distanceKm != null ? 'text-cyan-400' : 'text-gray-500'}`}>
+                  <Navigation size={14} />
+                  {profile._distanceKm != null ? formatDistance(profile._distanceKm) : 'Distance unavailable'}
                 </div>
               )}
               <div className="pt-4 border-t border-white/5">

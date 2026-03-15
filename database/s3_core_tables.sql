@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role TEXT CHECK (role IN ('artist', 'manager')) NOT NULL,
   bio TEXT,
   location TEXT,
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
   website TEXT,
   social_links JSONB DEFAULT '{}'::jsonb,
   is_verified BOOLEAN DEFAULT FALSE,
