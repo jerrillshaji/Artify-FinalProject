@@ -27,3 +27,9 @@ CREATE POLICY "Artists can update own bookings"
 CREATE POLICY "Organizers can update own bookings"
   ON public.bookings FOR UPDATE
   USING (organizer_id = auth.uid());
+
+-- Ensure profile coordinates exist for nearest-artist sorting
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+

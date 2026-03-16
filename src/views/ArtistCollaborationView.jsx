@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Zap, MapPin, ArrowUpRight } from 'lucide-react';
+import { Search, Zap, MapPin, ArrowUpRight, Navigation } from 'lucide-react';
+import { geocodeLocation, haversineDistance, getDeviceLocation } from '../lib/geocoding';
+import { KERALA_DISTRICTS, KERALA_DISTRICT_MAP } from '../data/keralaDistricts';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
@@ -11,16 +13,103 @@ const ArtistCollaborationView = () => {
   const { supabase, user } = useSupabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
+  const [selectedDistrict, setSelectedDistrict] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [collaborations, setCollaborations] = useState([]);
+  const [userCoords, setUserCoords] = useState(null);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [distanceSections, setDistanceSections] = useState([]);
+  const [districtCoordsCache, setDistrictCoordsCache] = useState({});
 
   const getProfilePath = (profile) => {
     if (profile?.id) {
       return `/profile?id=${profile.id}`;
     }
     return '/profile';
+  };
+
+  const buildDistanceSections = (items) => {
+    const within10 = items.filter((item) => item._distanceKm != null && item._distanceKm <= 10);
+    const within30 = items.filter((item) => item._distanceKm != null && item._distanceKm > 10 && item._distanceKm <= 30);
+    const within50 = items.filter((item) => item._distanceKm != null && item._distanceKm > 30 && item._distanceKm <= 50);
+    const within100 = items.filter((item) => item._distanceKm != null && item._distanceKm > 50 && item._distanceKm <= 100);
+    const within500 = items.filter((item) => item._distanceKm != null && item._distanceKm > 100 && item._distanceKm <= 500);
+    const within1000 = items.filter((item) => item._distanceKm != null && item._distanceKm > 500 && item._distanceKm <= 1000);
+
+    return [
+      { key: '10', title: 'Within 10 kms', items: within10 },
+      { key: '30', title: '10 to 30 kms', items: within30 },
+      { key: '50', title: '30 to 50 kms', items: within50 },
+      { key: '100', title: '50 to 100 kms', items: within100 },
+      { key: '500', title: '100 to 500 kms', items: within500 },
+      { key: '1000', title: '500 to 1000 kms', items: within1000 },
+    ].filter((section) => section.items.length > 0);
+  };
+
+  const getSearchOriginCoords = async () => {
+    if (!selectedDistrict) {
+      return null;
+    }
+
+    if (selectedDistrict === 'current') {
+      if (userCoords?.lat != null && userCoords?.lng != null) {
+        return userCoords;
+      }
+      return null;
+    }
+
+    if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
+      const cached = districtCoordsCache[selectedDistrict];
+      if (cached?.lat != null && cached?.lng != null) {
+        return cached;
+      }
+
+      const district = KERALA_DISTRICT_MAP[selectedDistrict];
+      const geocoded = await geocodeLocation(`${district.label}, Kerala, India`);
+      const fallback = { lat: district.latitude, lng: district.longitude };
+      const resolved = geocoded || fallback;
+
+      setDistrictCoordsCache((prev) => ({
+        ...prev,
+        [selectedDistrict]: resolved,
+      }));
+
+      return resolved;
+    }
+
+    return null;
+  };
+
+  const formatDistance = (km) => {
+    if (km == null || !isFinite(km)) return null;
+    if (km < 1) return `${Math.round(km * 1000)} m away`;
+    if (km < 10) return `${km.toFixed(1)} km away`;
+    return `${Math.round(km)} km away`;
+  };
+
+  const requestDeviceLocation = async () => {
+    setGettingLocation(true);
+    setLocationError('');
+    try {
+      const coords = await getDeviceLocation();
+      setUserCoords(coords);
+      setShowLocationModal(false);
+      return coords;
+    } catch (err) {
+      const message =
+        err.code === 1
+          ? 'Location access denied. Please allow location access in your browser and try again.'
+          : err.message || 'Could not get your location. Please try again.';
+      setLocationError(message);
+      setShowLocationModal(true);
+      return null;
+    } finally {
+      setGettingLocation(false);
+    }
   };
 
   // Load collaborations
@@ -50,7 +139,7 @@ const ArtistCollaborationView = () => {
   }, []);
 
   const performSearch = async () => {
-    if (!searchQuery.trim()) {
+    if (!searchQuery.trim() && !selectedDistrict) {
       setResults([]);
       setHasSearched(false);
       return;
@@ -68,47 +157,72 @@ const ArtistCollaborationView = () => {
           managers (*)
         `);
 
-      // Build search conditions
-      const conditions = [];
-      
+      if (user?.id) {
+        query = query.neq('id', user.id);
+      }
+
+      if (searchType === 'artist') {
+        query = query.eq('role', 'artist');
+      } else if (searchType === 'manager') {
+        query = query.eq('role', 'manager');
+      }
+
       if (searchQuery.trim()) {
-        const searchTerm = searchQuery.trim().toLowerCase();
-        
-        // Search by username (partial match, case-insensitive)
-        conditions.push(`username.ilike.%${searchTerm}%`);
-        // Search by full name (partial match, case-insensitive)
-        conditions.push(`full_name.ilike.%${searchQuery.trim()}%`);
-        // Search by location (partial match, case-insensitive)
-        conditions.push(`location.ilike.%${searchQuery.trim()}%`);
-        
-        // Also search in artists table (stage name and tags)
+        const normalized = searchQuery.trim();
+        const searchConditions = [
+          `username.ilike.%${normalized.toLowerCase()}%`,
+          `full_name.ilike.%${normalized}%`,
+          `location.ilike.%${normalized}%`,
+        ];
+
         const { data: artistsData } = await supabase
           .from('artists')
           .select('id')
-          .or(`stage_name.ilike.%${searchQuery.trim()}%,tags.cs.{${searchTerm}}`);
-        
-        if (artistsData && artistsData.length > 0) {
-          const artistIds = artistsData.map(a => a.id);
-          conditions.push(`id.in.(${artistIds.join(',')})`);
+          .or(`stage_name.ilike.%${normalized}%,tags.cs.{${normalized.toLowerCase()}}`);
+
+        if (artistsData?.length) {
+          const artistIds = artistsData.map((a) => a.id);
+          searchConditions.push(`id.in.(${artistIds.join(',')})`);
         }
+
+        query = query.or(searchConditions.join(','));
       }
 
-      // Filter by type
-      if (searchType === 'artist') {
-        conditions.push(`role.eq.artist`);
-      } else if (searchType === 'manager') {
-        conditions.push(`role.eq.manager`);
-      }
-
-      if (conditions.length > 0) {
-        query = query.or(conditions.join(','));
-      }
-
-      const { data, error } = await query.limit(50);
+      const { data, error } = await query.limit(100);
 
       if (error) throw error;
 
-      setResults(data || []);
+      let processed = data || [];
+      const searchOrigin = await getSearchOriginCoords();
+
+      if (selectedDistrict && !searchOrigin) {
+        setResults([]);
+        setDistanceSections([]);
+        return;
+      }
+
+      if (searchOrigin) {
+        processed = processed
+          .map((p) => ({
+            ...p,
+            _distanceKm:
+              p.latitude != null && p.longitude != null
+                ? haversineDistance(searchOrigin.lat, searchOrigin.lng, p.latitude, p.longitude)
+                : null,
+          }))
+          .sort((a, b) => {
+            const da = a._distanceKm ?? Infinity;
+            const db = b._distanceKm ?? Infinity;
+            return da - db;
+          });
+
+        processed = processed.filter((item) => item._distanceKm != null && item._distanceKm <= 1000);
+        setDistanceSections(buildDistanceSections(processed));
+      } else {
+        setDistanceSections([]);
+      }
+
+      setResults(processed);
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
@@ -120,13 +234,18 @@ const ArtistCollaborationView = () => {
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchQuery.trim()) {
+      if (searchQuery.trim() || selectedDistrict) {
         performSearch();
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchType]);
+  }, [searchQuery, selectedDistrict, searchType, userCoords?.lat, userCoords?.lng]);
+
+  useEffect(() => {
+    if (selectedDistrict !== 'current') return;
+    requestDeviceLocation();
+  }, [selectedDistrict]);
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-12">
@@ -148,6 +267,20 @@ const ArtistCollaborationView = () => {
               className="w-full bg-transparent border-none text-white text-sm sm:text-lg px-2 sm:px-4 py-3 sm:py-4 focus:outline-none focus:ring-0 placeholder:text-gray-600 min-w-0"
             />
           </div>
+
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            className="bg-black/30 border border-white/10 text-white text-xs sm:text-sm rounded-lg px-3 py-2.5 sm:py-3 min-w-[180px] focus:outline-none focus:border-cyan-500"
+          >
+            <option value="">All Kerala Districts</option>
+            <option value="current">Current Location</option>
+            {KERALA_DISTRICTS.map((district) => (
+              <option key={district.value} value={district.value}>
+                {district.label}
+              </option>
+            ))}
+          </select>
 
           {/* Search Type Filter */}
           <div className="flex gap-1 sm:gap-2 p-1 bg-black/20 rounded-xl">
@@ -189,6 +322,34 @@ const ArtistCollaborationView = () => {
         </div>
       </div>
 
+      {showLocationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#121216] p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-white">Enable Location Access</h3>
+            <p className="mt-2 text-sm text-gray-300">
+              Current Location search needs your device location permission.
+              {locationError ? ` ${locationError}` : ''}
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLocationModal(false)}
+                className="flex-1 rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:border-white/40"
+              >
+                Not Now
+              </button>
+              <button
+                type="button"
+                onClick={() => requestDeviceLocation()}
+                className="flex-1 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-black hover:bg-cyan-400"
+              >
+                {gettingLocation ? 'Checking...' : 'Try Again'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Jam Sessions / Collaborations */}
       <div className="flex flex-col gap-4 sm:gap-6">
         <div>
@@ -216,37 +377,92 @@ const ArtistCollaborationView = () => {
       )}
 
       {!loading && hasSearched && results.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {results.map((profile) => (
-            <div
-              key={profile.id}
-              onClick={() => navigate(getProfilePath(profile))}
-              className="bg-white/5 backdrop-blur-xl border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-white/20 hover:bg-white/10 transition-all group cursor-pointer relative overflow-hidden"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <img
-                  src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
-                  alt={profile.full_name}
-                  className="w-12 h-12 rounded-full object-cover border border-white/10"
-                />
-                <div>
-                  <h3 className="font-bold text-white">{profile.full_name}</h3>
-                  <p className="text-xs text-gray-400">
-                    {profile.role === 'artist' ? 'Artist' : 'Manager'}
-                  </p>
+        <>
+          {selectedDistrict && distanceSections.length > 0 ? (
+            <div className="space-y-8">
+              {distanceSections.map((section) => (
+                <div key={section.key} className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <h3 className="text-lg font-black text-white tracking-tight">{section.title}</h3>
+                    <Badge color="gray">{section.items.length}</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {section.items.map((profile) => (
+                      <div
+                        key={profile.id}
+                        onClick={() => navigate(getProfilePath(profile))}
+                        className="bg-white/5 backdrop-blur-xl border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-white/20 hover:bg-white/10 transition-all group cursor-pointer relative overflow-hidden"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <img
+                            src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                            alt={profile.full_name}
+                            className="w-12 h-12 rounded-full object-cover border border-white/10"
+                          />
+                          <div>
+                            <h3 className="font-bold text-white">{profile.full_name}</h3>
+                            <p className="text-xs text-gray-400">
+                              {profile.role === 'artist' ? 'Artist' : 'Manager'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                          <MapPin size={14} /> {profile.location || 'Location not set'}
+                        </div>
+                        {profile._distanceKm != null && (
+                          <div className={`flex items-center gap-2 text-xs mb-4 ${profile._distanceKm != null ? 'text-cyan-400' : 'text-gray-500'}`}>
+                            <Navigation size={14} />
+                            {profile._distanceKm != null ? formatDistance(profile._distanceKm) : 'Distance unavailable'}
+                          </div>
+                        )}
+                        <div className="pt-4 border-t border-white/5">
+                          <span className="text-xs font-bold text-white group-hover:underline">View Profile</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              {profile.location && (
-                <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
-                  <MapPin size={14} /> {profile.location}
-                </div>
-              )}
-              <div className="pt-4 border-t border-white/5">
-                <span className="text-xs font-bold text-white group-hover:underline">View Profile</span>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {results.map((profile) => (
+                <div
+                  key={profile.id}
+                  onClick={() => navigate(getProfilePath(profile))}
+                  className="bg-white/5 backdrop-blur-xl border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 hover:border-white/20 hover:bg-white/10 transition-all group cursor-pointer relative overflow-hidden"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <img
+                      src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                      alt={profile.full_name}
+                      className="w-12 h-12 rounded-full object-cover border border-white/10"
+                    />
+                    <div>
+                      <h3 className="font-bold text-white">{profile.full_name}</h3>
+                      <p className="text-xs text-gray-400">
+                        {profile.role === 'artist' ? 'Artist' : 'Manager'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
+                    <MapPin size={14} /> {profile.location || 'Location not set'}
+                  </div>
+                  {profile._distanceKm != null && (
+                    <div className={`flex items-center gap-2 text-xs mb-4 ${profile._distanceKm != null ? 'text-cyan-400' : 'text-gray-500'}`}>
+                      <Navigation size={14} />
+                      {profile._distanceKm != null ? formatDistance(profile._distanceKm) : 'Distance unavailable'}
+                    </div>
+                  )}
+                  <div className="pt-4 border-t border-white/5">
+                    <span className="text-xs font-bold text-white group-hover:underline">View Profile</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Collaborations List */}

@@ -135,6 +135,51 @@ export function SupabaseProvider({ children }) {
     });
   }, [refreshProfile, user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    if (profile?.latitude != null && profile?.longitude != null) return;
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
+
+    let cancelled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        if (cancelled) return;
+
+        const latitude = pos.coords.latitude;
+        const longitude = pos.coords.longitude;
+
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            latitude,
+            longitude,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
+        if (error) {
+          console.error('Auto geolocation update failed:', error);
+          return;
+        }
+
+        try {
+          await refreshProfile(user.id);
+        } catch (refreshError) {
+          console.error('Failed to refresh profile after geolocation update:', refreshError);
+        }
+      },
+      () => {
+        // User denied access or browser failed to resolve location.
+      },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 300000 }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, profile?.latitude, profile?.longitude, refreshProfile]);
+
   const normalizeUsername = (value, fallbackId = '') => {
     const cleaned = (value || '')
       .toLowerCase()

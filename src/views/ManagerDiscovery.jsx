@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Star, Check, ChevronRight, MapPin, Music, Briefcase, Navigation } from 'lucide-react';
-import { haversineDistance } from '../lib/geocoding';
+import { geocodeLocation, haversineDistance, getDeviceLocation } from '../lib/geocoding';
 import { formatINR } from '../lib/currency';
+import { KERALA_DISTRICTS, KERALA_DISTRICT_MAP } from '../data/keralaDistricts';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
@@ -34,6 +35,7 @@ const ManagerDiscovery = () => {
   const { supabase, user } = useSupabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
+  const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,6 +44,9 @@ const ManagerDiscovery = () => {
   const [userCoords, setUserCoords] = useState(null);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState('');
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [distanceSections, setDistanceSections] = useState([]);
+  const [districtCoordsCache, setDistrictCoordsCache] = useState({});
 
   const getProfilePath = (profile) => {
     if (profile?.id) {
@@ -57,8 +62,81 @@ const ManagerDiscovery = () => {
     return `${Math.round(km)} km away`;
   };
 
+  const requestDeviceLocation = async () => {
+    setGettingLocation(true);
+    setLocationError('');
+    try {
+      const coords = await getDeviceLocation();
+      setUserCoords(coords);
+      setShowLocationModal(false);
+      return coords;
+    } catch (err) {
+      const message =
+        err.code === 1
+          ? 'Location access denied. Please allow location access in your browser and try again.'
+          : err.message || 'Could not get your location. Please try again.';
+      setLocationError(message);
+      setShowLocationModal(true);
+      return null;
+    } finally {
+      setGettingLocation(false);
+    }
+  };
+
+  const buildDistanceSections = (items) => {
+    const within10 = items.filter((item) => item._distanceKm != null && item._distanceKm <= 10);
+    const within30 = items.filter((item) => item._distanceKm != null && item._distanceKm > 10 && item._distanceKm <= 30);
+    const within50 = items.filter((item) => item._distanceKm != null && item._distanceKm > 30 && item._distanceKm <= 50);
+    const within100 = items.filter((item) => item._distanceKm != null && item._distanceKm > 50 && item._distanceKm <= 100);
+    const within500 = items.filter((item) => item._distanceKm != null && item._distanceKm > 100 && item._distanceKm <= 500);
+    const within1000 = items.filter((item) => item._distanceKm != null && item._distanceKm > 500 && item._distanceKm <= 1000);
+
+    return [
+      { key: '10', title: 'Within 10 kms', items: within10 },
+      { key: '30', title: '10 to 30 kms', items: within30 },
+      { key: '50', title: '30 to 50 kms', items: within50 },
+      { key: '100', title: '50 to 100 kms', items: within100 },
+      { key: '500', title: '100 to 500 kms', items: within500 },
+      { key: '1000', title: '500 to 1000 kms', items: within1000 },
+    ].filter((section) => section.items.length > 0);
+  };
+
+  const getSearchOriginCoords = async () => {
+    if (!selectedDistrict && !nearMe) {
+      return null;
+    }
+
+    if (nearMe || selectedDistrict === 'current') {
+      if (userCoords?.lat != null && userCoords?.lng != null) {
+        return userCoords;
+      }
+      return null;
+    }
+
+    if (selectedDistrict && KERALA_DISTRICT_MAP[selectedDistrict]) {
+      const cached = districtCoordsCache[selectedDistrict];
+      if (cached?.lat != null && cached?.lng != null) {
+        return cached;
+      }
+
+      const district = KERALA_DISTRICT_MAP[selectedDistrict];
+      const geocoded = await geocodeLocation(`${district.label}, Kerala, India`);
+      const fallback = { lat: district.latitude, lng: district.longitude };
+      const resolved = geocoded || fallback;
+
+      setDistrictCoordsCache((prev) => ({
+        ...prev,
+        [selectedDistrict]: resolved,
+      }));
+
+      return resolved;
+    }
+
+    return null;
+  };
+
   const performSearch = async () => {
-    const hasFilters = searchQuery.trim() || selectedGenre || nearMe;
+    const hasFilters = searchQuery.trim() || selectedGenre || selectedDistrict || nearMe;
     if (!hasFilters) {
       setResults([]);
       setHasSearched(false);
@@ -77,24 +155,32 @@ const ManagerDiscovery = () => {
           managers (*)
         `);
 
-      // Build search conditions
-      const conditions = [];
+      if (user?.id) {
+        query = query.neq('id', user.id);
+      }
 
-      if (searchQuery.trim()) {
-        conditions.push(`username.ilike.%${searchQuery.trim().toLowerCase()}%`);
-        conditions.push(`full_name.ilike.%${searchQuery.trim()}%`);
-        conditions.push(`location.ilike.%${searchQuery.trim()}%`);
+      if (searchType === 'artist') {
+        query = query.eq('role', 'artist');
+      } else if (searchType === 'manager') {
+        query = query.eq('role', 'manager');
       }
 
       if (selectedGenre) {
+        if (searchType === 'manager') {
+          setResults([]);
+          setLoading(false);
+          return;
+        }
+
         const { data: artistsWithGenre } = await supabase
           .from('artists')
           .select('id')
           .contains('genres', [selectedGenre.toLowerCase()]);
 
         if (artistsWithGenre && artistsWithGenre.length > 0) {
-          const artistIds = artistsWithGenre.map(a => a.id);
-          conditions.push(`id.in.(${artistIds.join(',')})`);
+          const artistIds = artistsWithGenre.map((a) => a.id);
+          query = query.in('id', artistIds);
+          query = query.eq('role', 'artist');
         } else {
           setResults([]);
           setLoading(false);
@@ -102,15 +188,25 @@ const ManagerDiscovery = () => {
         }
       }
 
-      // Filter by type
-      if (searchType === 'artist') {
-        conditions.push(`role.eq.artist`);
-      } else if (searchType === 'manager') {
-        conditions.push(`role.eq.manager`);
-      }
+      if (searchQuery.trim()) {
+        const normalized = searchQuery.trim();
+        const searchConditions = [
+          `username.ilike.%${normalized.toLowerCase()}%`,
+          `full_name.ilike.%${normalized}%`,
+          `location.ilike.%${normalized}%`,
+        ];
 
-      if (conditions.length > 0) {
-        query = query.or(conditions.join(','));
+        const { data: artistsMatchingSearch } = await supabase
+          .from('artists')
+          .select('id')
+          .or(`stage_name.ilike.%${normalized}%,tags.cs.{${normalized.toLowerCase()}}`);
+
+        if (artistsMatchingSearch?.length) {
+          const artistIds = artistsMatchingSearch.map((a) => a.id);
+          searchConditions.push(`id.in.(${artistIds.join(',')})`);
+        }
+
+        query = query.or(searchConditions.join(','));
       }
 
       // Fetch more results when sorting by distance so we have enough to rank
@@ -119,14 +215,22 @@ const ManagerDiscovery = () => {
 
       let processed = data || [];
 
-      // Sort by distance when Near Me is active
-      if (nearMe && userCoords) {
+      const searchOrigin = await getSearchOriginCoords();
+      const locationModeEnabled = Boolean(selectedDistrict || nearMe);
+
+      if (locationModeEnabled && !searchOrigin) {
+        setResults([]);
+        setDistanceSections([]);
+        return;
+      }
+
+      if (searchOrigin) {
         processed = processed
           .map((p) => ({
             ...p,
             _distanceKm:
               p.latitude != null && p.longitude != null
-                ? haversineDistance(userCoords.lat, userCoords.lng, p.latitude, p.longitude)
+                ? haversineDistance(searchOrigin.lat, searchOrigin.lng, p.latitude, p.longitude)
                 : null,
           }))
           .sort((a, b) => {
@@ -134,6 +238,15 @@ const ManagerDiscovery = () => {
             const db = b._distanceKm ?? Infinity;
             return da - db;
           });
+
+        if (locationModeEnabled) {
+          processed = processed.filter((item) => item._distanceKm != null && item._distanceKm <= 1000);
+          setDistanceSections(buildDistanceSections(processed));
+        } else {
+          setDistanceSections([]);
+        }
+      } else {
+        setDistanceSections([]);
       }
 
       setResults(processed);
@@ -151,45 +264,28 @@ const ManagerDiscovery = () => {
       setLocationError('');
       return;
     }
-    // Coords already available — just enable the filter
-    if (userCoords) {
-      setNearMe(true);
-      return;
-    }
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser.');
-      return;
-    }
-    setGettingLocation(true);
-    setLocationError('');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    requestDeviceLocation().then((coords) => {
+      if (coords) {
         setNearMe(true);
-        setGettingLocation(false);
-      },
-      (err) => {
-        setGettingLocation(false);
-        setLocationError(
-          err.code === 1
-            ? 'Location access denied. Please allow location access in your browser and try again.'
-            : 'Could not get your location. Please try again.'
-        );
-      },
-      { timeout: 10000, enableHighAccuracy: false }
-    );
+      }
+    });
   };
 
   // Debounced search — also re-runs when nearMe toggles
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (searchQuery.trim() || selectedGenre || nearMe) {
+      if (searchQuery.trim() || selectedGenre || selectedDistrict || nearMe) {
         performSearch();
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedGenre, searchType, nearMe]);
+  }, [searchQuery, selectedGenre, selectedDistrict, searchType, nearMe, userCoords?.lat, userCoords?.lng]);
+
+  useEffect(() => {
+    if (selectedDistrict !== 'current') return;
+    requestDeviceLocation();
+  }, [selectedDistrict]);
 
   return (
     <div className="space-y-6 sm:space-y-8 md:space-y-10 pb-12">
@@ -211,6 +307,20 @@ const ManagerDiscovery = () => {
               className="w-full bg-transparent border-none text-white text-sm sm:text-lg px-2 sm:px-4 py-3 sm:py-4 focus:outline-none focus:ring-0 placeholder:text-gray-600 min-w-0"
             />
           </div>
+
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            className="bg-black/30 border border-white/10 text-white text-xs sm:text-sm rounded-lg px-3 py-2.5 sm:py-3 min-w-[180px] focus:outline-none focus:border-cyan-500"
+          >
+            <option value="">All Kerala Districts</option>
+            <option value="current">Current Location</option>
+            {KERALA_DISTRICTS.map((district) => (
+              <option key={district.value} value={district.value}>
+                {district.label}
+              </option>
+            ))}
+          </select>
 
           {/* Search Type Filter */}
           <div className="flex gap-1 sm:gap-2 p-1 bg-black/20 rounded-xl">
@@ -251,6 +361,34 @@ const ManagerDiscovery = () => {
           </Button>
         </div>
       </div>
+
+      {showLocationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#121216] p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-white">Enable Location Access</h3>
+            <p className="mt-2 text-sm text-gray-300">
+              Current Location search needs your device location permission.
+              {locationError ? ` ${locationError}` : ''}
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLocationModal(false)}
+                className="flex-1 rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:border-white/40"
+              >
+                Not Now
+              </button>
+              <button
+                type="button"
+                onClick={() => requestDeviceLocation()}
+                className="flex-1 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-black hover:bg-cyan-400"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Genre + Location Filters */}
       <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -306,10 +444,10 @@ const ManagerDiscovery = () => {
       )}
 
       {/* Near Me active banner */}
-      {nearMe && userCoords && !loading && results.length > 0 && (
+      {(nearMe || selectedDistrict) && !loading && results.length > 0 && distanceSections.length > 0 && (
         <div className="flex items-center gap-2 text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-4 py-2.5">
           <Navigation size={13} className="flex-shrink-0" />
-          Showing {results.length} result{results.length !== 1 ? 's' : ''} sorted by distance from your location
+          Showing {results.length} result{results.length !== 1 ? 's' : ''} grouped by distance sections up to 1000 km
         </div>
       )}
 
@@ -329,7 +467,7 @@ const ManagerDiscovery = () => {
         </div>
       )}
 
-      {!loading && results.length > 0 && (
+      {!loading && results.length > 0 && distanceSections.length === 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {results.map((profile) => (
             <div
@@ -370,6 +508,10 @@ const ManagerDiscovery = () => {
                 <p className="text-fuchsia-400 font-medium text-xs sm:text-sm mb-1 flex items-center gap-1 flex-wrap">
                   <span className="truncate">@{profile.username}</span>
                 </p>
+                <p className="text-gray-400 font-medium text-xs sm:text-sm mb-1 flex items-center gap-1 flex-wrap">
+                  <MapPin size={12} className="flex-shrink-0" />
+                  <span className="truncate">{profile.location || 'Location not set'}</span>
+                </p>
                 <p className="text-gray-400 font-medium text-xs sm:text-sm mb-4 sm:mb-6 flex items-center gap-1 flex-wrap">
                   <span className="truncate">
                     {profile.role === 'artist' 
@@ -390,12 +532,7 @@ const ManagerDiscovery = () => {
                       {tag}
                     </span>
                   ))}
-                  {profile.location && (
-                    <span className="px-2 sm:px-3 py-0.5 sm:py-1 bg-white/5 text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded border border-white/5 flex items-center gap-1">
-                      <MapPin size={10} /> {profile.location}
-                    </span>
-                  )}
-                  {nearMe && (
+                  {profile._distanceKm != null && (
                     <span
                       className={`px-2 sm:px-3 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded border flex items-center gap-1 ${
                         profile._distanceKm != null
@@ -426,6 +563,119 @@ const ManagerDiscovery = () => {
                     <ChevronRight size={20} sm={24} />
                   </button>
                 </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && distanceSections.length > 0 && (
+        <div className="space-y-8">
+          {distanceSections.map((section) => (
+            <div key={section.key} className="space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 className="text-lg font-black text-white tracking-tight">{section.title}</h3>
+                <Badge color="gray">{section.items.length}</Badge>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+                {section.items.map((profile) => (
+                  <div
+                    key={profile.id}
+                    onClick={() => navigate(getProfilePath(profile))}
+                    className="group relative bg-[#121216] rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden border border-white/5 hover:border-white/20 transition-all duration-500 hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)]"
+                  >
+                    <div className="relative h-64 sm:h-72 md:h-80 overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#121216] z-10"></div>
+                      <img
+                        src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                        alt={profile.full_name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 grayscale-[20%] group-hover:grayscale-0"
+                      />
+                      <div className="absolute top-2 sm:top-4 right-2 sm:right-4 z-20">
+                        <div className="bg-black/50 backdrop-blur-md border border-white/10 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center gap-0.5 sm:gap-1">
+                          <Star size={10} sm={12} className="text-yellow-400 fill-yellow-400" />
+                          {profile.role === 'artist' ? profile.artists?.[0]?.rating?.toFixed(1) || 'N/A' : 'N/A'}
+                        </div>
+                      </div>
+                      {profile.is_verified && (
+                        <div className="absolute top-2 sm:top-4 left-2 sm:left-4 z-20">
+                          <div className="bg-cyan-500/80 backdrop-blur-md px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center gap-1">
+                            <Check size={10} sm={12} /> Verified
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative z-20 px-4 sm:px-6 md:px-8 pb-4 sm:pb-6 md:pb-8 -mt-12 sm:-mt-16 md:-mt-20">
+                      <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-white leading-none mb-1 drop-shadow-lg flex items-center gap-2">
+                        <span className="truncate">
+                          {profile.role === 'artist' 
+                            ? profile.artists?.[0]?.stage_name || profile.full_name
+                            : profile.managers?.[0]?.company_name || profile.full_name
+                          }
+                        </span>
+                      </h3>
+                      <p className="text-fuchsia-400 font-medium text-xs sm:text-sm mb-1 flex items-center gap-1 flex-wrap">
+                        <span className="truncate">@{profile.username}</span>
+                      </p>
+                      <p className="text-gray-400 font-medium text-xs sm:text-sm mb-1 flex items-center gap-1 flex-wrap">
+                        <MapPin size={12} className="flex-shrink-0" />
+                        <span className="truncate">{profile.location || 'Location not set'}</span>
+                      </p>
+                      <p className="text-gray-400 font-medium text-xs sm:text-sm mb-4 sm:mb-6 flex items-center gap-1 flex-wrap">
+                        <span className="truncate">
+                          {profile.role === 'artist' 
+                            ? formatGenreLabel(profile.artists?.[0]?.genres?.[0] || 'artist')
+                            : (profile.managers?.[0]?.company_type || 'Manager')
+                          }
+                        </span>
+                        {profile.is_verified && (
+                          <Check className="w-3 h-3 sm:w-4 sm:h-4 p-0.5 bg-cyan-500 text-black rounded-full flex-shrink-0" />
+                        )}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-6">
+                        {profile.role === 'artist' && profile.artists?.[0]?.tags?.slice(0, 3).map((tag, i) => (
+                          <span
+                            key={i}
+                            className="px-2 sm:px-3 py-0.5 sm:py-1 bg-white/5 text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded border border-white/5"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {profile._distanceKm != null && (
+                          <span
+                            className={`px-2 sm:px-3 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded border flex items-center gap-1 ${
+                              profile._distanceKm != null
+                                ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                                : 'bg-white/5 text-gray-600 border-white/5'
+                            }`}
+                          >
+                            <Navigation size={10} />
+                            {profile._distanceKm != null
+                              ? formatDistance(profile._distanceKm)
+                              : 'Location unknown'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between border-t border-white/10 pt-4 sm:pt-6">
+                        <div>
+                          <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">
+                            {profile.role === 'artist' ? 'Starting at' : 'Events organized'}
+                          </p>
+                          <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">
+                            {profile.role === 'artist'
+                              ? formatINR(profile.artists?.[0]?.base_price || 0)
+                              : profile.managers?.[0]?.total_events || '0'
+                            }
+                          </p>
+                        </div>
+                        <button className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white text-black flex items-center justify-center hover:scale-110 hover:bg-fuchsia-500 hover:text-white transition-all duration-300 flex-shrink-0">
+                          <ChevronRight size={20} sm={24} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
