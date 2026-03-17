@@ -17,15 +17,6 @@ import PostDetailView from '../../views/PostDetailView';
 import PaymentView from '../../views/PaymentView';
 import { useSupabase } from '../../context/SupabaseContext';
 
-const SettingsPlaceholder = () => (
-  <div className="flex items-center justify-center min-h-[60vh]">
-    <div className="text-center">
-      <h2 className="text-2xl font-bold text-white mb-2">Settings</h2>
-      <p className="text-gray-400">Settings page coming soon...</p>
-    </div>
-  </div>
-);
-
 const MainLayout = ({ user, role, onLogout }) => {
   const { user: authUser, supabase } = useSupabase();
   const location = useLocation();
@@ -35,7 +26,6 @@ const MainLayout = ({ user, role, onLogout }) => {
     discover: null,
     dashboard: null,
     messages: null,
-    settings: null,
   });
 
   const activeUserId = authUser?.id || user?.id;
@@ -46,7 +36,6 @@ const MainLayout = ({ user, role, onLogout }) => {
       discover: `artify_seen_nav_discover_${activeUserId}`,
       dashboard: `artify_seen_nav_dashboard_${activeUserId}`,
       messages: `artify_seen_nav_messages_${activeUserId}`,
-      settings: `artify_seen_nav_settings_${activeUserId}`,
     } : null),
     [activeUserId]
   );
@@ -75,7 +64,6 @@ const MainLayout = ({ user, role, onLogout }) => {
     if (pathname.startsWith('/discover')) return 'discover';
     if (pathname.startsWith('/dashboard') || pathname.startsWith('/payments')) return 'dashboard';
     if (pathname.startsWith('/messages')) return 'messages';
-    if (pathname.startsWith('/settings')) return 'settings';
     return null;
   }, []);
 
@@ -93,7 +81,6 @@ const MainLayout = ({ user, role, onLogout }) => {
         discover: null,
         dashboard: null,
         messages: null,
-        settings: null,
       });
       return;
     }
@@ -179,7 +166,6 @@ const MainLayout = ({ user, role, onLogout }) => {
         discover: formatBadge(discoverCount),
         dashboard: formatBadge(dashboardCount),
         messages: formatBadge(unreadMessageCount),
-        settings: null,
       });
     } catch (error) {
       console.error('Failed to load navigation badges:', error);
@@ -189,7 +175,7 @@ const MainLayout = ({ user, role, onLogout }) => {
   useEffect(() => {
     if (!activeUserId || !seenStorageKeys) return;
 
-    (['community', 'feed', 'discover', 'dashboard', 'messages', 'settings']).forEach((tabKey) => {
+    (['community', 'feed', 'discover', 'dashboard', 'messages']).forEach((tabKey) => {
       if (!getSeenAt(tabKey)) {
         setSeenAtNow(tabKey);
       }
@@ -282,7 +268,6 @@ const MainLayout = ({ user, role, onLogout }) => {
               <Route path="/profile/edit" element={<EditProfileView />} />
               <Route path="/profile" element={<ProfileView role={role} />} />
               <Route path="/:username" element={<ProfileView role={role} />} />
-              <Route path="/settings" element={<SettingsPlaceholder />} />
               <Route path="*" element={<Navigate to="/community" replace />} />
             </Routes>
           </div>
