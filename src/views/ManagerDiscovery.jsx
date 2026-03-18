@@ -30,6 +30,20 @@ const formatGenreLabel = (genre) => {
     .join(' ');
 };
 
+const getArtistRatingMeta = (profile) => {
+  if (profile?.role !== 'artist') {
+    return { average: 0, count: 0, hasRatings: false };
+  }
+
+  const average = Number(profile?.artists?.[0]?.rating || 0);
+  const count = Number(profile?.artists?.[0]?.total_ratings || 0);
+  return {
+    average,
+    count,
+    hasRatings: count > 0 && average > 0,
+  };
+};
+
 const ManagerDiscovery = () => {
   const navigate = useNavigate();
   const { supabase, user } = useSupabase();
@@ -470,6 +484,9 @@ const ManagerDiscovery = () => {
       {!loading && results.length > 0 && distanceSections.length === 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {results.map((profile) => (
+            (() => {
+              const ratingMeta = getArtistRatingMeta(profile);
+              return (
             <div
               key={profile.id}
               onClick={() => navigate(getProfilePath(profile))}
@@ -483,9 +500,11 @@ const ManagerDiscovery = () => {
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 grayscale-[20%] group-hover:grayscale-0"
                 />
                 <div className="absolute top-2 sm:top-4 right-2 sm:right-4 z-20">
-                  <div className="bg-black/50 backdrop-blur-md border border-white/10 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center gap-0.5 sm:gap-1">
+                  <div className="bg-black/60 backdrop-blur-md border border-amber-400/20 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center gap-1">
                     <Star size={10} sm={12} className="text-yellow-400 fill-yellow-400" />
-                    {profile.role === 'artist' ? profile.artists?.[0]?.rating?.toFixed(1) || 'N/A' : 'N/A'}
+                    {profile.role === 'artist'
+                      ? (ratingMeta.hasRatings ? `${ratingMeta.average.toFixed(1)} (${ratingMeta.count})` : 'No ratings')
+                      : 'N/A'}
                   </div>
                 </div>
                 {profile.is_verified && (
@@ -523,6 +542,20 @@ const ManagerDiscovery = () => {
                     <Check className="w-3 h-3 sm:w-4 sm:h-4 p-0.5 bg-cyan-500 text-black rounded-full flex-shrink-0" />
                   )}
                 </p>
+                {profile.role === 'artist' && (
+                  <div className="mb-3 flex items-center gap-1.5 text-[10px] sm:text-xs text-amber-200">
+                    {[1, 2, 3, 4, 5].map((starValue) => (
+                      <Star
+                        key={starValue}
+                        size={10}
+                        className={starValue <= Math.round(ratingMeta.average) ? 'text-amber-400 fill-amber-400' : 'text-gray-600'}
+                      />
+                    ))}
+                    <span className="text-gray-400">
+                      {ratingMeta.hasRatings ? `${ratingMeta.count} review${ratingMeta.count > 1 ? 's' : ''}` : 'No reviews yet'}
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-6">
                   {profile.role === 'artist' && profile.artists?.[0]?.tags?.slice(0, 3).map((tag, i) => (
                     <span
@@ -565,6 +598,8 @@ const ManagerDiscovery = () => {
                 </div>
               </div>
             </div>
+              );
+            })()
           ))}
         </div>
       )}
@@ -580,6 +615,9 @@ const ManagerDiscovery = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
                 {section.items.map((profile) => (
+                  (() => {
+                    const ratingMeta = getArtistRatingMeta(profile);
+                    return (
                   <div
                     key={profile.id}
                     onClick={() => navigate(getProfilePath(profile))}
@@ -593,9 +631,11 @@ const ManagerDiscovery = () => {
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 grayscale-[20%] group-hover:grayscale-0"
                       />
                       <div className="absolute top-2 sm:top-4 right-2 sm:right-4 z-20">
-                        <div className="bg-black/50 backdrop-blur-md border border-white/10 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center gap-0.5 sm:gap-1">
+                        <div className="bg-black/60 backdrop-blur-md border border-amber-400/20 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center gap-1">
                           <Star size={10} sm={12} className="text-yellow-400 fill-yellow-400" />
-                          {profile.role === 'artist' ? profile.artists?.[0]?.rating?.toFixed(1) || 'N/A' : 'N/A'}
+                          {profile.role === 'artist'
+                            ? (ratingMeta.hasRatings ? `${ratingMeta.average.toFixed(1)} (${ratingMeta.count})` : 'No ratings')
+                            : 'N/A'}
                         </div>
                       </div>
                       {profile.is_verified && (
@@ -633,6 +673,20 @@ const ManagerDiscovery = () => {
                           <Check className="w-3 h-3 sm:w-4 sm:h-4 p-0.5 bg-cyan-500 text-black rounded-full flex-shrink-0" />
                         )}
                       </p>
+                      {profile.role === 'artist' && (
+                        <div className="mb-3 flex items-center gap-1.5 text-[10px] sm:text-xs text-amber-200">
+                          {[1, 2, 3, 4, 5].map((starValue) => (
+                            <Star
+                              key={starValue}
+                              size={10}
+                              className={starValue <= Math.round(ratingMeta.average) ? 'text-amber-400 fill-amber-400' : 'text-gray-600'}
+                            />
+                          ))}
+                          <span className="text-gray-400">
+                            {ratingMeta.hasRatings ? `${ratingMeta.count} review${ratingMeta.count > 1 ? 's' : ''}` : 'No reviews yet'}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-6">
                         {profile.role === 'artist' && profile.artists?.[0]?.tags?.slice(0, 3).map((tag, i) => (
                           <span
@@ -675,6 +729,8 @@ const ManagerDiscovery = () => {
                       </div>
                     </div>
                   </div>
+                    );
+                  })()
                 ))}
               </div>
             </div>
