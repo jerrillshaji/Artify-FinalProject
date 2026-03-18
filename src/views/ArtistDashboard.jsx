@@ -5,6 +5,7 @@ import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
 import { formatINR } from '../lib/currency';
+import { geocodeLocation, haversineDistance } from '../lib/geocoding';
 
 const encoder = new TextEncoder();
 
@@ -32,7 +33,7 @@ const createPaymentChatPayload = ({ bookingId, title, location, amount, eventDat
 
 const ArtistDashboard = () => {
   const navigate = useNavigate();
-  const { supabase, user } = useSupabase();
+  const { supabase, user, profile: currentProfile } = useSupabase();
   const [viewMode, setViewMode] = useState('list');
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const today = new Date();
@@ -50,6 +51,9 @@ const ArtistDashboard = () => {
   const [updatingId, setUpdatingId] = useState(null);
   const [applyingEventId, setApplyingEventId] = useState(null);
   const [requestingPaymentId, setRequestingPaymentId] = useState(null);
+  const [requestSort, setRequestSort] = useState('recent');
+  const [locationCoordsCache, setLocationCoordsCache] = useState({});
+  const [distanceByBookingId, setDistanceByBookingId] = useState({});
 
   const loadBookings = async () => {
     if (!user?.id) return;
@@ -70,7 +74,7 @@ const ArtistDashboard = () => {
       if (organizerIds.length > 0) {
         const { data: organizersData, error: organizersError } = await supabase
           .from('profiles')
-          .select('id,full_name,username,avatar_url')
+          .select('id,full_name,username,avatar_url,latitude,longitude')
           .in('id', organizerIds);
 
         if (organizersError) throw organizersError;
@@ -107,7 +111,7 @@ const ArtistDashboard = () => {
         if (missingIds.length > 0) {
           const { data: openOrgProfiles, error: openOrgError } = await supabase
             .from('profiles')
-            .select('id,full_name,username,avatar_url')
+            .select('id,full_name,username,avatar_url,latitude,longitude')
             .in('id', missingIds);
 
           if (openOrgError) throw openOrgError;
@@ -131,6 +135,76 @@ const ArtistDashboard = () => {
   useEffect(() => {
     loadBookings();
   }, [supabase, user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const computeDistances = async () => {
+      const artistLat = currentProfile?.latitude;
+      const artistLng = currentProfile?.longitude;
+
+      if (artistLat == null || artistLng == null || bookings.length === 0) {
+        setDistanceByBookingId({});
+        return;
+      }
+
+      const locationTexts = [...new Set(bookings
+        .map((item) => (item.events?.location || item.events?.venue_name || item.events?.city || '').trim())
+        .filter(Boolean))];
+
+      const missingLocations = locationTexts.filter((text) => locationCoordsCache[text] === undefined);
+
+      if (missingLocations.length > 0) {
+        const resolvedEntries = await Promise.all(
+          missingLocations.map(async (text) => {
+            const coords = await geocodeLocation(text);
+            return [text, coords];
+          })
+        );
+
+        if (!cancelled) {
+          setLocationCoordsCache((prev) => {
+            const merged = { ...prev };
+            resolvedEntries.forEach(([text, coords]) => {
+              merged[text] = coords;
+            });
+            return merged;
+          });
+        }
+      }
+
+      const nextDistanceByBookingId = {};
+      bookings.forEach((item) => {
+        const organizerLat = item.organizer?.latitude;
+        const organizerLng = item.organizer?.longitude;
+
+        if (organizerLat != null && organizerLng != null) {
+          nextDistanceByBookingId[item.id] = haversineDistance(artistLat, artistLng, organizerLat, organizerLng);
+          return;
+        }
+
+        const locationText = (item.events?.location || item.events?.venue_name || item.events?.city || '').trim();
+        const fallbackCoords = locationText ? locationCoordsCache[locationText] : null;
+
+        if (fallbackCoords?.lat != null && fallbackCoords?.lng != null) {
+          nextDistanceByBookingId[item.id] = haversineDistance(artistLat, artistLng, fallbackCoords.lat, fallbackCoords.lng);
+          return;
+        }
+
+        nextDistanceByBookingId[item.id] = null;
+      });
+
+      if (!cancelled) {
+        setDistanceByBookingId(nextDistanceByBookingId);
+      }
+    };
+
+    computeDistances();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookings, currentProfile?.latitude, currentProfile?.longitude, locationCoordsCache]);
 
   const bookingStats = useMemo(() => {
     const pending = bookings.filter((item) => item.status === 'pending').length;
@@ -330,8 +404,56 @@ const ArtistDashboard = () => {
     if (viewMode === 'calendar') {
       return bookings.filter((item) => item.status === 'accepted').sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
     }
-    return bookings;
-  }, [bookings, viewMode]);
+
+    const getDistanceFromArtistKm = (item) => {
+      const cachedDistance = distanceByBookingId[item.id];
+      if (typeof cachedDistance === 'number') {
+        return cachedDistance;
+      }
+
+      const artistLat = currentProfile?.latitude;
+      const artistLng = currentProfile?.longitude;
+      const organizerLat = item.organizer?.latitude;
+      const organizerLng = item.organizer?.longitude;
+
+      if (artistLat == null || artistLng == null || organizerLat == null || organizerLng == null) {
+        return null;
+      }
+
+      return haversineDistance(artistLat, artistLng, organizerLat, organizerLng);
+    };
+
+    const sorted = [...bookings];
+
+    if (requestSort === 'payment_high') {
+      sorted.sort((a, b) => Number(b.offer_amount || 0) - Number(a.offer_amount || 0));
+      return sorted;
+    }
+
+    if (requestSort === 'distance_nearest' || requestSort === 'distance_farthest') {
+      sorted.sort((a, b) => {
+        const aDistance = getDistanceFromArtistKm(a);
+        const bDistance = getDistanceFromArtistKm(b);
+        const aValue = aDistance == null ? Number.POSITIVE_INFINITY : aDistance;
+        const bValue = bDistance == null ? Number.POSITIVE_INFINITY : bDistance;
+
+        if (requestSort === 'distance_nearest') {
+          return aValue - bValue;
+        }
+
+        // Farthest first, but still keep unknown distances at the end.
+        if (aDistance == null && bDistance == null) return 0;
+        if (aDistance == null) return 1;
+        if (bDistance == null) return -1;
+        return bValue - aValue;
+      });
+      return sorted;
+    }
+
+    // Default keeps latest incoming requests first.
+    sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return sorted;
+  }, [bookings, currentProfile?.latitude, currentProfile?.longitude, distanceByBookingId, requestSort, viewMode]);
 
   const acceptedByDay = useMemo(() => {
     return grouped.reduce((acc, item) => {
@@ -483,7 +605,23 @@ const ArtistDashboard = () => {
           <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/5 backdrop-blur-xl sm:rounded-3xl">
             <div className="flex items-center justify-between border-b border-white/5 p-3 sm:p-4 md:p-6">
               <h2 className="flex items-center gap-2 text-base font-bold text-white sm:text-lg"><div className="h-1.5 w-1.5 animate-pulse rounded-full bg-fuchsia-500 sm:h-2 sm:w-2"></div><span className="hidden sm:inline">My Invitations And Requests</span><span className="sm:hidden">My Requests</span></h2>
-              <Badge color="gray">{bookings.filter((item) => item.status === 'pending').length} Pending</Badge>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 sm:text-xs" htmlFor="artist-request-sort">
+                  Sort
+                </label>
+                <select
+                  id="artist-request-sort"
+                  value={requestSort}
+                  onChange={(event) => setRequestSort(event.target.value)}
+                  className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-[11px] font-semibold text-white outline-none transition-colors hover:border-white/30 sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs"
+                >
+                  <option value="recent">Latest</option>
+                  <option value="payment_high">Highest Payment</option>
+                  <option value="distance_nearest">Nearest Distance</option>
+                  <option value="distance_farthest">Farthest Distance</option>
+                </select>
+                <Badge color="gray">{bookings.filter((item) => item.status === 'pending').length} Pending</Badge>
+              </div>
             </div>
             <div className="divide-y divide-white/5">
               {loading ? [1, 2, 3].map((item) => <div key={item} className="h-28 animate-pulse bg-black/20"></div>) : grouped.length > 0 ? grouped.map((req) => (

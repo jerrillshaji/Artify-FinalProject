@@ -57,6 +57,81 @@ const formatRelativeTime = (timestamp) => {
   return new Date(timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
+const getArtistRatingMeta = (profile) => {
+  const ratingValue = profile?.trending_rating ?? profile?.artists?.[0]?.rating;
+  const totalRatingsValue = profile?.trending_total_ratings ?? profile?.artists?.[0]?.total_ratings;
+  const rating = Number(ratingValue ?? 0);
+  const totalRatings = Number(totalRatingsValue ?? 0);
+
+  return {
+    rating,
+    totalRatings,
+  };
+};
+
+const filterRatedArtists = (artists = []) => {
+  return artists.filter((artist) => {
+    const { rating, totalRatings } = getArtistRatingMeta(artist);
+    return rating > 0 && totalRatings > 0;
+  });
+};
+
+const sortArtistsByTrendingScore = (artists = []) => {
+  if (artists.length === 0) return [];
+
+  const ratedArtists = filterRatedArtists(artists);
+  const globalMean = ratedArtists.length > 0
+    ? ratedArtists.reduce((sum, artist) => {
+      return sum + getArtistRatingMeta(artist).rating;
+    }, 0) / ratedArtists.length
+    : 0;
+
+  const minimumVotes = 5;
+
+  return [...artists].sort((a, b) => {
+    const aMeta = getArtistRatingMeta(a);
+    const bMeta = getArtistRatingMeta(b);
+    const aHasRatings = aMeta.rating > 0 && aMeta.totalRatings > 0;
+    const bHasRatings = bMeta.rating > 0 && bMeta.totalRatings > 0;
+
+    // Keep rated artists ahead of unrated ones.
+    if (aHasRatings !== bHasRatings) {
+      return aHasRatings ? -1 : 1;
+    }
+
+    const aScore = aHasRatings
+      ? ((aMeta.totalRatings / (aMeta.totalRatings + minimumVotes)) * aMeta.rating)
+        + ((minimumVotes / (aMeta.totalRatings + minimumVotes)) * globalMean)
+      : 0;
+    const bScore = bHasRatings
+      ? ((bMeta.totalRatings / (bMeta.totalRatings + minimumVotes)) * bMeta.rating)
+        + ((minimumVotes / (bMeta.totalRatings + minimumVotes)) * globalMean)
+      : 0;
+
+    if (bScore !== aScore) {
+      return bScore - aScore;
+    }
+
+    if (bMeta.rating !== aMeta.rating) {
+      return bMeta.rating - aMeta.rating;
+    }
+
+    if (bMeta.totalRatings !== aMeta.totalRatings) {
+      return bMeta.totalRatings - aMeta.totalRatings;
+    }
+
+    return new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime();
+  });
+};
+
+const getTrendingRatingLabel = (artist) => {
+  const { rating, totalRatings } = getArtistRatingMeta(artist);
+  if (rating > 0 && totalRatings > 0) {
+    return `${rating.toFixed(1)} (${totalRatings})`;
+  }
+  return 'No ratings yet';
+};
+
 const CommunityFeed = () => {
   const navigate = useNavigate();
   const { supabase, user, profile: sharedProfile } = useSupabase();
@@ -77,32 +152,60 @@ const CommunityFeed = () => {
     setFeedError('');
 
     try {
-      const [featuredBandResult, featuredArtistsResult, followsResult] = await Promise.all([
+      const [featuredArtistsResult, ratingsResult, followsResult] = await Promise.all([
         supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id, username, full_name, avatar_url, updated_at, created_at, artists (stage_name, rating, total_ratings)')
           .eq('role', 'artist')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+          .limit(1000),
         supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url, updated_at, artists (stage_name)')
-          .eq('role', 'artist')
-          .order('created_at', { ascending: false })
-          .limit(6),
+          .from('artist_ratings')
+          .select('artist_id, rating')
+          .limit(10000),
         supabase
           .from('follows')
           .select('following_id')
           .eq('follower_id', user.id),
       ]);
 
-      if (featuredBandResult.error) throw featuredBandResult.error;
       if (featuredArtistsResult.error) throw featuredArtistsResult.error;
+      if (ratingsResult.error) throw ratingsResult.error;
       if (followsResult.error) throw followsResult.error;
 
-      setFeaturedBand(featuredBandResult.data || null);
-      setFeaturedArtists(featuredArtistsResult.data || []);
+      const ratingsByArtistId = new Map();
+      (ratingsResult.data || []).forEach((row) => {
+        const artistId = row.artist_id;
+        const ratingValue = Number(row.rating || 0);
+        if (!artistId || ratingValue <= 0) return;
+
+        const existing = ratingsByArtistId.get(artistId) || { sum: 0, count: 0 };
+        existing.sum += ratingValue;
+        existing.count += 1;
+        ratingsByArtistId.set(artistId, existing);
+      });
+
+      const artistsWithLiveRatings = (featuredArtistsResult.data || []).map((artist) => {
+        const aggregate = ratingsByArtistId.get(artist.id);
+        if (!aggregate || aggregate.count === 0) {
+          return {
+            ...artist,
+            trending_rating: 0,
+            trending_total_ratings: 0,
+          };
+        }
+
+        return {
+          ...artist,
+          trending_rating: Number((aggregate.sum / aggregate.count).toFixed(2)),
+          trending_total_ratings: aggregate.count,
+        };
+      });
+
+      const rankedFeaturedArtists = sortArtistsByTrendingScore(artistsWithLiveRatings);
+      const topTrendingArtist = rankedFeaturedArtists[0] || null;
+
+      setFeaturedBand(topTrendingArtist);
+      setFeaturedArtists(rankedFeaturedArtists.slice(0, 6));
 
       const followedIds = (followsResult.data || []).map((item) => item.following_id);
       const followedSet = new Set(followedIds);
@@ -159,8 +262,14 @@ const CommunityFeed = () => {
     if (!user?.id) return;
 
     const channel = supabase
-      .channel(`feed-profiles-${user.id}`)
+      .channel(`feed-live-${user.id}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => {
+        loadFeed();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'artists' }, () => {
+        loadFeed();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'artist_ratings' }, () => {
         loadFeed();
       })
       .subscribe();
@@ -319,8 +428,11 @@ const CommunityFeed = () => {
           <div className="absolute bottom-0 left-0 p-4 sm:p-6 lg:p-8">
             <span className="mb-3 inline-block rounded-full bg-fuchsia-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-[0_0_15px_rgba(192,38,211,0.5)] sm:text-xs">Trending Now</span>
             <h2 className="mb-2 text-2xl font-black tracking-tight text-white sm:text-3xl lg:text-4xl">
-              {featuredBand?.full_name || 'Featured Artist'}
+              {featuredBand?.artists?.[0]?.stage_name || featuredBand?.full_name || featuredBand?.username || 'Featured Artist'}
             </h2>
+            <p className="mb-2 text-xs font-semibold tracking-wide text-amber-300/90 sm:text-sm">
+              {`Rating: ${getTrendingRatingLabel(featuredBand)}`}
+            </p>
             <p className="max-w-lg text-sm text-gray-300 sm:text-base">Tap into new performances, behind-the-scenes updates, and artist drops as they happen.</p>
           </div>
         </div>
@@ -363,6 +475,7 @@ const CommunityFeed = () => {
         {visibleFeaturedArtists.map((artist, i) => {
           const artistAvatar = resolveAvatarUrl(artist, avatarCacheSeed);
           const featuredDisplayName = artist.stage_name || artist.artists?.[0]?.stage_name || artist.full_name || artist.username || `artist_${i}`;
+          const featuredRatingMeta = getArtistRatingMeta(artist);
 
           return (
             <button
@@ -382,6 +495,9 @@ const CommunityFeed = () => {
               </div>
               <span className="text-[10px] font-bold tracking-wide text-gray-500 transition-colors group-hover:text-white sm:text-xs">
                 {featuredDisplayName}
+              </span>
+              <span className="text-[9px] font-semibold tracking-wide text-amber-300/80 sm:text-[10px]">
+                {getTrendingRatingLabel(artist)}
               </span>
             </button>
           );
