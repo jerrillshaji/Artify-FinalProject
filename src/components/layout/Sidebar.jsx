@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Grid, List, MessageCircle, Search, Settings, Newspaper } from 'lucide-react';
+import { Calendar, Grid, List, MessageCircle, Search, Newspaper } from 'lucide-react';
 import NavItem from './NavItem';
 
 const Sidebar = ({ role, badges = {} }) => {
@@ -17,7 +17,6 @@ const Sidebar = ({ role, badges = {} }) => {
           badge={badges.dashboard}
         />
         <NavItem to="/messages" icon={MessageCircle} label="Chat" badge={badges.messages} />
-        <NavItem to="/settings" icon={Settings} label="Settings" badge={badges.settings} />
       </div>
     </aside>
   );

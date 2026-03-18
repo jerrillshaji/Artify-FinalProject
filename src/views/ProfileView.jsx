@@ -40,7 +40,74 @@ const ProfileView = ({ role }) => {
   const [showBackgroundActions, setShowBackgroundActions] = useState(false);
   const [showBackgroundPreview, setShowBackgroundPreview] = useState(false);
   const [backgroundUploading, setBackgroundUploading] = useState(false);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
+  const [artistRatings, setArtistRatings] = useState([]);
+  const [showRatingComments, setShowRatingComments] = useState(false);
+  const [ratingInput, setRatingInput] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [userRatingRecord, setUserRatingRecord] = useState(null);
+  const [submittingRating, setSubmittingRating] = useState(false);
   const backgroundFileInputRef = useRef(null);
+
+  const loadArtistRatings = async (artistId, artistRole) => {
+    if (!artistId || artistRole !== 'artist') {
+      setArtistRatings([]);
+      setUserRatingRecord(null);
+      setRatingInput(0);
+      setRatingComment('');
+      return;
+    }
+
+    setRatingsLoading(true);
+    try {
+      const { data: ratingsRows, error: ratingsError } = await supabase
+        .from('artist_ratings')
+        .select('id, artist_id, rater_id, rating, comment, created_at, updated_at')
+        .eq('artist_id', artistId)
+        .order('updated_at', { ascending: false });
+
+      if (ratingsError) {
+        throw ratingsError;
+      }
+
+      const ratingsData = ratingsRows || [];
+      const raterIds = [...new Set(ratingsData.map((item) => item.rater_id).filter(Boolean))];
+      let ratersById = new Map();
+
+      if (raterIds.length > 0) {
+        const { data: ratersData, error: ratersError } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url, is_verified')
+          .in('id', raterIds);
+
+        if (ratersError) {
+          throw ratersError;
+        }
+
+        ratersById = new Map((ratersData || []).map((item) => [item.id, item]));
+      }
+
+      const mergedRatings = ratingsData.map((item) => ({
+        ...item,
+        rater: ratersById.get(item.rater_id) || null,
+      }));
+
+      const myRating = mergedRatings.find((item) => item.rater_id === user?.id) || null;
+
+      setArtistRatings(mergedRatings);
+      setUserRatingRecord(myRating);
+      setRatingInput(myRating?.rating || 0);
+      setRatingComment(myRating?.comment || '');
+    } catch (error) {
+      console.error('Error loading artist ratings:', error);
+      setArtistRatings([]);
+      setUserRatingRecord(null);
+      setRatingInput(0);
+      setRatingComment('');
+    } finally {
+      setRatingsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -137,7 +204,7 @@ const ProfileView = ({ role }) => {
           resolvedProfile?.role === 'artist' 
             ? supabase
                 .from('artists')
-                .select('stage_name, genres, price_range, base_price, rating, total_gigs, tags, portfolio_images, videos, is_available')
+                .select('stage_name, genres, price_range, base_price, rating, total_ratings, total_gigs, tags, portfolio_images, videos, is_available')
                 .eq('id', profileId)
                 .maybeSingle()
             : Promise.resolve({ data: null }),
@@ -193,6 +260,10 @@ const ProfileView = ({ role }) => {
 
     fetchProfile();
   }, [user, supabase, username, profileIdParam, role]);
+
+  useEffect(() => {
+    loadArtistRatings(profile?.id, profile?.role);
+  }, [profile?.id, profile?.role]);
 
   const mapUsersByIdOrder = (ids, users = []) => {
     const byId = new Map(users.map((item) => [item.id, item]));
@@ -424,6 +495,53 @@ const ProfileView = ({ role }) => {
     }
   };
 
+  const handleSaveRating = async () => {
+    if (!user?.id || !profile?.id || profile?.role !== 'artist' || user.id === profile.id || submittingRating) {
+      return;
+    }
+
+    if (ratingInput < 1 || ratingInput > 5) {
+      alert('Please select a rating between 1 and 5 stars.');
+      return;
+    }
+
+    setSubmittingRating(true);
+    try {
+      const { error } = await supabase
+        .from('artist_ratings')
+        .upsert(
+          {
+            artist_id: profile.id,
+            rater_id: user.id,
+            rating: ratingInput,
+            comment: ratingComment.trim() || null,
+          },
+          { onConflict: 'artist_id,rater_id' }
+        );
+
+      if (error) {
+        throw error;
+      }
+
+      await loadArtistRatings(profile.id, profile.role);
+
+      const { data: latestArtistMeta } = await supabase
+        .from('artists')
+        .select('rating, total_ratings')
+        .eq('id', profile.id)
+        .maybeSingle();
+
+      if (latestArtistMeta) {
+        setProfile((prev) => (prev ? { ...prev, ...latestArtistMeta } : prev));
+      }
+    } catch (error) {
+      console.error('Error saving artist rating:', error);
+      alert(error.message || 'Failed to save rating.');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
   useEffect(() => {
     const loadProfilePosts = async () => {
       if (!profile?.id) return;
@@ -481,7 +599,15 @@ const ProfileView = ({ role }) => {
   const isVerified = profile?.is_verified || false;
   const followers = profile?.followers_count || 0;
   const following = followingCount || 0;
-  const rating = profile?.rating || 0;
+  const profileRating = Number(profile?.rating || 0);
+  const profileRatingCount = Number(profile?.total_ratings || 0);
+  const derivedRatingCount = artistRatings.length;
+  const derivedAverageRating = derivedRatingCount > 0
+    ? artistRatings.reduce((sum, item) => sum + Number(item.rating || 0), 0) / derivedRatingCount
+    : 0;
+  const effectiveRatingCount = derivedRatingCount > 0 ? derivedRatingCount : profileRatingCount;
+  const effectiveRating = derivedRatingCount > 0 ? derivedAverageRating : profileRating;
+  const hasRatings = effectiveRatingCount > 0;
   const isOwnProfile = Boolean(user?.id && profile?.id === user.id);
   const defaultBackgroundUrl = 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80';
   const backgroundUrl = profile?.background_url || defaultBackgroundUrl;
@@ -568,6 +694,151 @@ const ProfileView = ({ role }) => {
           </div>
         )}
       </div>
+
+      {profileRole === 'artist' && (
+        <div className="mb-6 sm:mb-8">
+          <div className="rounded-2xl border border-amber-400/20 bg-gradient-to-br from-amber-500/10 via-black/20 to-black/30 p-4 backdrop-blur-xl sm:rounded-3xl sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-300/80 sm:text-xs">Artist Rating</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((starValue) => (
+                      <Star
+                        key={starValue}
+                        size={16}
+                        className={starValue <= Math.round(effectiveRating) ? 'text-amber-400 fill-amber-400' : 'text-gray-600'}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-base font-bold text-white sm:text-lg">
+                    {hasRatings ? `${effectiveRating.toFixed(1)} / 5` : 'No ratings yet'}
+                  </span>
+                  <span className="text-xs text-gray-400 sm:text-sm">
+                    {hasRatings ? `${effectiveRatingCount} review${effectiveRatingCount > 1 ? 's' : ''}` : 'Be the first to rate this artist'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRatingComments((prev) => !prev)}
+                  className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 sm:text-sm"
+                >
+                  {showRatingComments ? 'Hide Comments' : 'Comments'}
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={`overflow-hidden transition-all duration-500 ease-out ${showRatingComments ? 'max-h-[1000px] opacity-100 translate-y-0 mt-4' : 'max-h-0 opacity-0 -translate-y-2'}`}
+            >
+              <div className="grid grid-cols-1 gap-4 border-t border-white/10 pt-4 lg:grid-cols-3">
+                <div className="lg:col-span-1 rounded-2xl border border-white/10 bg-black/30 p-4">
+                  <h3 className="text-sm font-bold text-white sm:text-base">{userRatingRecord ? 'Update your rating' : 'Rate this artist'}</h3>
+                  {!user ? (
+                    <p className="mt-2 text-sm text-gray-400">Login to rate and comment on this artist.</p>
+                  ) : isOwnProfile ? (
+                    <p className="mt-2 text-sm text-gray-400">You cannot rate your own profile.</p>
+                  ) : (
+                    <>
+                      <div className="mt-3 flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((starValue) => (
+                          <button
+                            key={starValue}
+                            type="button"
+                            onClick={() => setRatingInput(starValue)}
+                            className="rounded-md p-1 transition-transform hover:scale-105"
+                            aria-label={`Rate ${starValue} star${starValue > 1 ? 's' : ''}`}
+                          >
+                            <Star
+                              size={20}
+                              className={starValue <= ratingInput ? 'text-amber-400 fill-amber-400' : 'text-gray-600'}
+                            />
+                          </button>
+                        ))}
+                      </div>
+
+                      <textarea
+                        value={ratingComment}
+                        onChange={(event) => setRatingComment(event.target.value)}
+                        rows={4}
+                        maxLength={500}
+                        placeholder="Share your experience with this artist..."
+                        className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition-colors placeholder:text-gray-500 focus:border-amber-400/50"
+                      />
+                      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                        <span>{ratingInput > 0 ? `${ratingInput} / 5 selected` : 'Select star rating'}</span>
+                        <span>{ratingComment.length}/500</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSaveRating}
+                        disabled={submittingRating || ratingInput < 1}
+                        className="mt-3 w-full rounded-xl bg-amber-400 px-3 py-2 text-sm font-bold text-black transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-400/50"
+                      >
+                        {submittingRating ? 'Saving...' : userRatingRecord ? 'Update Rating' : 'Submit Rating'}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-black/30 p-4">
+                  <h3 className="text-sm font-bold text-white sm:text-base">Community Comments</h3>
+
+                  {ratingsLoading ? (
+                    <div className="mt-4 flex items-center gap-2 text-sm text-gray-400">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                      Loading comments...
+                    </div>
+                  ) : artistRatings.length > 0 ? (
+                    <div className="mt-3 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+                      {artistRatings.map((item) => (
+                        <div key={item.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={item.rater?.avatar_url || `https://i.pravatar.cc/80?u=${item.rater_id}`}
+                                alt={item.rater?.full_name || item.rater?.username || 'User'}
+                                className="h-8 w-8 rounded-full border border-white/20 object-cover"
+                              />
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-white">
+                                  {item.rater?.full_name || `@${item.rater?.username || 'user'}`}
+                                </p>
+                                <p className="text-xs text-gray-500">{new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((starValue) => (
+                                <Star
+                                  key={starValue}
+                                  size={13}
+                                  className={starValue <= item.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-600'}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          <p className="mt-2 text-sm text-gray-300">
+                            {item.comment?.trim() ? item.comment : 'No comment provided.'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm text-gray-400">No comments yet. Be the first to leave one.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
         <div className="md:col-span-1 space-y-4 sm:space-y-6">
           <div className="bg-white/5 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-white/5">
@@ -613,8 +884,8 @@ const ProfileView = ({ role }) => {
             <div className="flex justify-between items-center">
               <span className="text-gray-300 text-sm sm:text-base">Rating</span>
               <span className="font-bold text-yellow-400 flex items-center gap-1 text-sm sm:text-base">
-                {rating > 0 ? rating.toFixed(1) : 'N/A'} 
-                {rating > 0 && <Star size={12} sm={14} fill="currentColor" />}
+                {hasRatings ? `${effectiveRating.toFixed(1)} (${effectiveRatingCount})` : 'No ratings'}
+                {hasRatings && <Star size={12} fill="currentColor" />}
               </span>
             </div>
           </div>

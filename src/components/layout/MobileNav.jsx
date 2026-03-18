@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Grid, List, MessageCircle, Search, Settings, Newspaper } from 'lucide-react';
+import { Calendar, Grid, List, MessageCircle, Search, Newspaper } from 'lucide-react';
 import NavItem from './NavItem';
 
 const MobileNav = ({ role, badges = {} }) => {
@@ -16,7 +16,6 @@ const MobileNav = ({ role, badges = {} }) => {
         isMobile={true}
       />
       <NavItem to="/messages" icon={MessageCircle} label="Chat" badge={badges.messages} isMobile={true} />
-      <NavItem to="/settings" icon={Settings} label="Settings" badge={badges.settings} isMobile={true} />
     </nav>
   );
 };
