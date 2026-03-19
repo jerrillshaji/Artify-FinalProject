@@ -49,6 +49,7 @@ const ManagerDiscovery = () => {
   const { supabase, user } = useSupabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'artist', 'manager'
+  const [sortBy, setSortBy] = useState('default'); // 'default', 'rating_high'
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
   const [results, setResults] = useState([]);
@@ -202,30 +203,67 @@ const ManagerDiscovery = () => {
         }
       }
 
+      let data;
+
       if (searchQuery.trim()) {
         const normalized = searchQuery.trim();
-        const searchConditions = [
-          `username.ilike.%${normalized.toLowerCase()}%`,
-          `full_name.ilike.%${normalized}%`,
-          `location.ilike.%${normalized}%`,
-        ];
+        const normalizedLower = normalized.toLowerCase();
+        const titleCaseGenre = formatGenreLabel(normalized);
 
-        const { data: artistsMatchingSearch } = await supabase
-          .from('artists')
-          .select('id')
-          .or(`stage_name.ilike.%${normalized}%,tags.cs.{${normalized.toLowerCase()}}`);
+        // Run name/username/location/bio search and artist auxiliary searches in parallel
+        const [nameResult, artistsByStageName, artistsByTags, artistsByGenres] = await Promise.all([
+          query
+            .or(`username.ilike.%${normalizedLower}%,full_name.ilike.%${normalized}%,location.ilike.%${normalized}%,bio.ilike.%${normalizedLower}%`)
+            .limit(nearMe ? 200 : 50),
+          supabase.from('artists').select('id').ilike('stage_name', `%${normalized}%`),
+          supabase.from('artists').select('id').contains('tags', [normalizedLower]),
+          // overlaps catches lowercase ('indie'), title-case ('Indie'), and any mix
+          supabase.from('artists').select('id').overlaps('genres', [normalizedLower, titleCaseGenre]),
+        ]);
 
-        if (artistsMatchingSearch?.length) {
-          const artistIds = artistsMatchingSearch.map((a) => a.id);
-          searchConditions.push(`id.in.(${artistIds.join(',')})`);
+        if (nameResult.error) throw nameResult.error;
+
+        const artistSearchErrors = [
+          artistsByStageName.error,
+          artistsByTags.error,
+          artistsByGenres.error,
+        ].filter(Boolean);
+        if (artistSearchErrors.length > 0) throw artistSearchErrors[0];
+
+        const artistIds = [...new Set([
+          ...(artistsByStageName.data || []).map((a) => a.id),
+          ...(artistsByTags.data || []).map((a) => a.id),
+          ...(artistsByGenres.data || []).map((a) => a.id),
+        ])];
+
+        // Merge name-search results with artist-ID-based results (avoids or() id.in.() issue)
+        const merged = [...(nameResult.data || [])];
+        if (artistIds.length > 0) {
+          let artistProfileQuery = supabase
+            .from('profiles')
+            .select(`*, artists (*), managers (*)`)
+            .in('id', artistIds);
+          if (user?.id) artistProfileQuery = artistProfileQuery.neq('id', user.id);
+          if (searchType === 'artist') artistProfileQuery = artistProfileQuery.eq('role', 'artist');
+          else if (searchType === 'manager') artistProfileQuery = artistProfileQuery.eq('role', 'manager');
+          const { data: apData, error: apError } = await artistProfileQuery.limit(200);
+          if (apError) throw apError;
+          const seenIds = new Set(merged.map((p) => p.id));
+          for (const p of (apData || [])) {
+            if (!seenIds.has(p.id)) {
+              seenIds.add(p.id);
+              merged.push(p);
+            }
+          }
         }
 
-        query = query.or(searchConditions.join(','));
+        data = merged;
+      } else {
+        // No text search — execute query directly (genre chip / location filters only)
+        const { data: qData, error: qError } = await query.limit(nearMe ? 200 : 50);
+        if (qError) throw qError;
+        data = qData;
       }
-
-      // Fetch more results when sorting by distance so we have enough to rank
-      const { data, error } = await query.limit(nearMe ? 200 : 50);
-      if (error) throw error;
 
       let processed = data || [];
 
@@ -263,6 +301,39 @@ const ManagerDiscovery = () => {
         setDistanceSections([]);
       }
 
+      if (sortBy === 'rating_high' && searchType !== 'manager') {
+        processed = [...processed].sort((a, b) => {
+          const aIsArtist = a.role === 'artist';
+          const bIsArtist = b.role === 'artist';
+
+          // Keep artists above managers when sorting by artist ratings.
+          if (aIsArtist !== bIsArtist) {
+            return aIsArtist ? -1 : 1;
+          }
+
+          if (!aIsArtist && !bIsArtist) {
+            return (a.full_name || '').localeCompare(b.full_name || '');
+          }
+
+          const aRating = getArtistRatingMeta(a);
+          const bRating = getArtistRatingMeta(b);
+
+          if (bRating.average !== aRating.average) {
+            return bRating.average - aRating.average;
+          }
+
+          if (bRating.count !== aRating.count) {
+            return bRating.count - aRating.count;
+          }
+
+          return (a.full_name || '').localeCompare(b.full_name || '');
+        });
+      }
+
+      if (locationModeEnabled) {
+        setDistanceSections(buildDistanceSections(processed));
+      }
+
       setResults(processed);
     } catch (error) {
       console.error('Search error:', error);
@@ -294,7 +365,7 @@ const ManagerDiscovery = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedGenre, selectedDistrict, searchType, nearMe, userCoords?.lat, userCoords?.lng]);
+  }, [searchQuery, selectedGenre, selectedDistrict, searchType, sortBy, nearMe, userCoords?.lat, userCoords?.lng]);
 
   useEffect(() => {
     if (selectedDistrict !== 'current') return;
@@ -369,6 +440,15 @@ const ManagerDiscovery = () => {
               Managers
             </button>
           </div>
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-black/30 border border-white/10 text-white text-xs sm:text-sm rounded-lg px-3 py-2.5 sm:py-3 min-w-[130px] focus:outline-none focus:border-cyan-500"
+          >
+            <option value="default">Default</option>
+            <option value="rating_high">Top Rated</option>
+          </select>
 
           <Button onClick={performSearch} className="flex-shrink-0 text-xs sm:text-sm px-3 sm:px-5">
             Search

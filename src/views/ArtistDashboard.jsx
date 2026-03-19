@@ -430,22 +430,13 @@ const ArtistDashboard = () => {
       return sorted;
     }
 
-    if (requestSort === 'distance_nearest' || requestSort === 'distance_farthest') {
+    if (requestSort === 'distance_nearest') {
       sorted.sort((a, b) => {
         const aDistance = getDistanceFromArtistKm(a);
         const bDistance = getDistanceFromArtistKm(b);
         const aValue = aDistance == null ? Number.POSITIVE_INFINITY : aDistance;
         const bValue = bDistance == null ? Number.POSITIVE_INFINITY : bDistance;
-
-        if (requestSort === 'distance_nearest') {
-          return aValue - bValue;
-        }
-
-        // Farthest first, but still keep unknown distances at the end.
-        if (aDistance == null && bDistance == null) return 0;
-        if (aDistance == null) return 1;
-        if (bDistance == null) return -1;
-        return bValue - aValue;
+        return aValue - bValue;
       });
       return sorted;
     }
@@ -618,7 +609,6 @@ const ArtistDashboard = () => {
                   <option value="recent">Latest</option>
                   <option value="payment_high">Highest Payment</option>
                   <option value="distance_nearest">Nearest Distance</option>
-                  <option value="distance_farthest">Farthest Distance</option>
                 </select>
                 <Badge color="gray">{bookings.filter((item) => item.status === 'pending').length} Pending</Badge>
               </div>
