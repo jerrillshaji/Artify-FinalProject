@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Zap, MapPin, ArrowUpRight, Navigation } from 'lucide-react';
+import { Search, MapPin, ArrowUpRight, Navigation } from 'lucide-react';
 import { geocodeLocation, haversineDistance, getDeviceLocation } from '../lib/geocoding';
 import { KERALA_DISTRICTS, KERALA_DISTRICT_MAP } from '../data/keralaDistricts';
 import Button from '../components/ui/Button';
@@ -520,14 +520,7 @@ const ArtistCollaborationView = () => {
             </div>
           ))}
 
-          {/* Post Request Card */}
-          <div className="bg-gradient-to-br from-fuchsia-900/20 to-purple-900/20 backdrop-blur-xl border border-dashed border-fuchsia-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-6 flex flex-col items-center justify-center text-center hover:bg-fuchsia-900/30 transition-all cursor-pointer group min-h-[200px]">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/5 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform text-fuchsia-400">
-              <Zap size={28} sm={32} />
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-white mb-1">Post a Request</h3>
-            <p className="text-sm text-gray-400">Looking for talent? Start here.</p>
-          </div>
+
         </div>
       )}
     </div>
