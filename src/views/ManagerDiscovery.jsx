@@ -9,6 +9,12 @@ import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
 
+const withCacheBuster = (imageUrl, version) => {
+  if (!imageUrl || imageUrl.startsWith('data:') || !version) return imageUrl;
+  const separator = imageUrl.includes('?') ? '&' : '?';
+  return `${imageUrl}${separator}v=${encodeURIComponent(version)}`;
+};
+
 const GENRE_OPTIONS = [
   { label: 'Indie', value: 'indie' },
   { label: 'Carnatic', value: 'carnatic' },
@@ -575,7 +581,7 @@ const ManagerDiscovery = () => {
               <div className="relative h-64 sm:h-72 md:h-80 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#121216] z-10"></div>
                 <img
-                  src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                  src={withCacheBuster(profile.avatar_url, profile.updated_at) || `https://i.pravatar.cc/150?u=${profile.id}`}
                   alt={profile.full_name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 grayscale-[20%] group-hover:grayscale-0"
                 />
@@ -706,7 +712,7 @@ const ManagerDiscovery = () => {
                     <div className="relative h-64 sm:h-72 md:h-80 overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#121216] z-10"></div>
                       <img
-                        src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                        src={withCacheBuster(profile.avatar_url, profile.updated_at) || `https://i.pravatar.cc/150?u=${profile.id}`}
                         alt={profile.full_name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 grayscale-[20%] group-hover:grayscale-0"
                       />

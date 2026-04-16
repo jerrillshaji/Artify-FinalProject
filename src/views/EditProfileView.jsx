@@ -34,6 +34,7 @@ const EditProfileView = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [imagePreview, setImagePreview] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -93,13 +94,10 @@ const EditProfileView = () => {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
-        setFormData(prev => ({
-          ...prev,
-          avatar_url: reader.result
-        }));
       };
       reader.readAsDataURL(file);
     }
@@ -125,11 +123,30 @@ const EditProfileView = () => {
         coords = await geocodeLocation(formData.location);
       }
 
+      // Upload avatar to Supabase Storage if a new file was selected
+      let avatarUrl = formData.avatar_url;
+      if (avatarFile) {
+        const ext = avatarFile.name.split('.').pop();
+        const filePath = `${user.id}/avatar.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile, { upsert: true, contentType: avatarFile.type });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+        avatarUrl = urlData.publicUrl;
+      }
+
       const profileUpdate = {
         full_name: formData.full_name,
         bio: formData.bio,
         location: formData.location,
-        avatar_url: imagePreview,
+        avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
       };
       if (coords) {
@@ -242,7 +259,7 @@ const EditProfileView = () => {
               <div className="relative">
                 <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-br from-fuchsia-500 to-cyan-500">
                   <img 
-                    src={imagePreview || `https://i.pravatar.cc/150?img=${role === 'artist' ? '1' : '60'}`}
+                    src={imagePreview || `https://i.pravatar.cc/150?u=${user?.id || 'artify'}`}
                     className="w-full h-full rounded-full object-cover border-4 border-[#050505]" 
                     alt="Avatar"
                   />
