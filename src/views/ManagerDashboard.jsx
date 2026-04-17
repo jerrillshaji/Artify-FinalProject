@@ -534,12 +534,40 @@ const ManagerDashboard = () => {
 
       if (error) throw error;
 
+      if (status === 'accepted') {
+        const [{ error: lockEventError }, { error: declineOthersError }] = await Promise.all([
+          supabase
+            .from('events')
+            .update({ visibility: 'private' })
+            .eq('id', booking.event_id)
+            .eq('organizer_id', user.id),
+          supabase
+            .from('bookings')
+            .update({ status: 'declined' })
+            .eq('event_id', booking.event_id)
+            .eq('organizer_id', user.id)
+            .eq('status', 'pending')
+            .neq('id', booking.id),
+        ]);
+
+        if (lockEventError) throw lockEventError;
+        if (declineOthersError) throw declineOthersError;
+      }
+
       const decisionText = status === 'accepted'
         ? `Your request for ${booking.events?.title || 'this event'} was accepted.`
         : `Your request for ${booking.events?.title || 'this event'} was declined.`;
+      const decisionPayload = createBookingChatPayload({
+        bookingId: booking.id,
+        title: booking.events?.title,
+        location: booking.events?.location,
+        amount: booking.offer_amount,
+        eventDate: booking.event_date,
+        source: 'manager_decision',
+      });
 
       const key = await generateKey(user.id, booking.artist_id);
-      const encryptedContent = await encryptMessage(decisionText, key);
+      const encryptedContent = await encryptMessage(`${decisionPayload}::${decisionText}`, key);
 
       const { error: messageError } = await supabase.from('messages').insert({
         sender_id: user.id,

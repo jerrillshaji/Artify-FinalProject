@@ -70,6 +70,10 @@ const parsePaymentActionPayload = (text) => {
   };
 };
 
+const createBookingActionPayload = ({ bookingId, title, location, amount, eventDate, source }) => {
+  return `__BOOKING_ACTION__::${bookingId}::${source}::${title || 'Event Offer'}::${location || 'TBD'}::${amount || 0}::${eventDate || ''}`;
+};
+
 const MessagesView = () => {
   const navigate = useNavigate();
   const { supabase, user } = useSupabase();
@@ -83,6 +87,7 @@ const MessagesView = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [followedUsers, setFollowedUsers] = useState([]);
   const [conversationError, setConversationError] = useState('');
   const [updatingBookingId, setUpdatingBookingId] = useState(null);
   const messagesContainerRef = useRef(null);
@@ -216,7 +221,7 @@ const MessagesView = () => {
       if (bookingIds.length > 0) {
         const { data: bookingRows, error: bookingError } = await supabase
           .from('bookings')
-          .select('id,artist_id,organizer_id,status,payment_status,paid_at,offer_amount,event_date,events(title,location,venue_name)')
+          .select('id,event_id,artist_id,organizer_id,status,payment_status,paid_at,offer_amount,event_date,events(title,location,venue_name)')
           .in('id', bookingIds);
 
         if (!bookingError) {
@@ -259,6 +264,40 @@ const MessagesView = () => {
   useEffect(() => {
     if (selectedConversation) loadMessages();
   }, [loadMessages, selectedConversation]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadFollowedUsers = async () => {
+      try {
+        const { data: followRows, error: followsError } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', user.id);
+
+        if (followsError) throw followsError;
+
+        const followingIds = (followRows || []).map((row) => row.following_id);
+        if (followingIds.length === 0) {
+          setFollowedUsers([]);
+          return;
+        }
+
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', followingIds);
+
+        if (profilesError) throw profilesError;
+        setFollowedUsers(profiles || []);
+      } catch (error) {
+        console.error('Error loading followed users for message search:', error);
+        setFollowedUsers([]);
+      }
+    };
+
+    loadFollowedUsers();
+  }, [supabase, user]);
 
   useEffect(() => {
     if (!targetUserId || !user || loading) return;
@@ -317,8 +356,36 @@ const MessagesView = () => {
       const { error } = await scoped;
       if (error) throw error;
 
+      if (status === 'accepted' && !isArtistResponder && booking.event_id) {
+        const [{ error: lockEventError }, { error: declineOthersError }] = await Promise.all([
+          supabase
+            .from('events')
+            .update({ visibility: 'private' })
+            .eq('id', booking.event_id)
+            .eq('organizer_id', user.id),
+          supabase
+            .from('bookings')
+            .update({ status: 'declined' })
+            .eq('event_id', booking.event_id)
+            .eq('organizer_id', user.id)
+            .eq('status', 'pending')
+            .neq('id', bookingId),
+        ]);
+
+        if (lockEventError) throw lockEventError;
+        if (declineOthersError) throw declineOthersError;
+      }
+
       const decisionText = `${status === 'accepted' ? 'Accepted' : 'Declined'} booking for ${booking.events?.title || message.bookingAction.title || 'event'}.`;
-      await sendEncryptedText(message.sender_id, decisionText);
+      const decisionPayload = createBookingActionPayload({
+        bookingId,
+        title: booking.events?.title || message.bookingAction.title,
+        location: booking.events?.location || message.bookingAction.location,
+        amount: booking.offer_amount ?? message.bookingAction.amount ?? 0,
+        eventDate: booking.event_date || message.bookingAction.eventDate,
+        source: isArtistResponder ? 'artist_decision' : 'manager_decision',
+      });
+      await sendEncryptedText(message.sender_id, `${decisionPayload}::${decisionText}`);
 
       setBookingRecords((prev) => ({
         ...prev,
@@ -358,6 +425,18 @@ const MessagesView = () => {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const filteredConversations = conversations.filter((conversation) =>
+    conversation.user?.full_name?.toLowerCase().includes(normalizedSearchQuery)
+  );
+  const conversationIds = new Set(conversations.map((conversation) => conversation.id));
+  const searchableFollowedUsers = normalizedSearchQuery
+    ? followedUsers.filter((profile) => {
+        const fullName = profile.full_name?.toLowerCase() || '';
+        return fullName.includes(normalizedSearchQuery) && !conversationIds.has(profile.id);
+      })
+    : [];
+
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -394,8 +473,7 @@ const MessagesView = () => {
           <div className="flex-1 space-y-1 overflow-y-auto p-2 sm:space-y-2 sm:p-4">
             {conversationError ? <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200 sm:text-sm">{conversationError}</div> : null}
 
-            {conversations
-              .filter((conversation) => conversation.user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
+            {filteredConversations
               .map((conversation) => (
                 <div
                   key={conversation.id}
@@ -419,6 +497,30 @@ const MessagesView = () => {
                   </div>
                 </div>
               ))}
+
+            {searchableFollowedUsers.map((profile) => (
+              <div
+                key={profile.id}
+                onClick={() => setSelectedConversation({ id: profile.id, user: profile, lastMessage: null, unreadCount: 0 })}
+                className={`flex cursor-pointer gap-2 rounded-xl border p-3 transition-all sm:gap-4 sm:rounded-2xl sm:p-4 ${selectedConversation?.id === profile.id ? 'border-white/5 bg-white/10' : 'border-transparent hover:bg-white/5'}`}
+              >
+                <div className="relative shrink-0">
+                  <img
+                    src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                    className="h-10 w-10 rounded-full border border-white/10 object-cover sm:h-12 sm:w-12"
+                    alt={profile.full_name}
+                  />
+                  <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#1a1a1a] bg-green-500 sm:h-3 sm:w-3"></div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-0.5 flex items-start justify-between sm:mb-1">
+                    <h4 className="truncate text-sm font-bold text-white sm:text-base">{profile.full_name || 'Unknown User'}</h4>
+                    <span className="shrink-0 text-[9px] font-medium text-gray-500 sm:text-[10px]">Start chat</span>
+                  </div>
+                  <p className="truncate text-xs text-gray-400 sm:text-sm">No messages yet</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
