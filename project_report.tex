@@ -1,0 +1,2146 @@
+\documentclass[12pt,a4paper]{report}
+\newcommand{\chapterpage}[2]{
+\clearpage
+\thispagestyle{empty}
+
+\vspace*{\fill}
+\begin{center}
+\textbf{\MakeUppercase{CHAPTER #1}}\\[1cm]
+\textbf{\MakeUppercase{#2}}
+\end{center}
+\vspace*{\fill}
+
+\clearpage
+}
+
+% ---------------- Packages ----------------
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{setspace}
+\setlength{\parindent}{0pt} % No paragraph indentation
+\setlength{\parskip}{8pt}
+\usepackage{tocloft}
+\usepackage{float}
+\makeatletter
+\renewcommand{\@cftmaketoctitle}{%
+\chapter*{%
+\centering
+
+\fontsize{14pt}{16pt}\selectfont
+\textbf{TABLE OF CONTENTS}
+}
+}
+\makeatother
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep, topsep=6pt}
+\usepackage{needspace}
+\usepackage{pdfpages}
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{14pt}{10pt}
+\titlespacing*{\subsection}{0pt}{12pt}{8pt}
+\usepackage{fancyhdr}
+\setlength{\headheight}{14pt}
+\usepackage{adjustbox}
+\usepackage{subcaption}
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstset{
+basicstyle=\ttfamily\small,
+breaklines=true,
+frame=single
+}
+% ---------------- Table of Contents Formatting ----------------
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+
+% Vertical spacing around title
+
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{20pt}
+
+% Indentation & alignment
+\setlength{\cftchapindent}{0pt}
+\setlength{\cftsecindent}{1.5em}
+
+% Fonts
+\renewcommand{\cftchapfont}{\bfseries}
+\renewcommand{\cftchappagefont}{\bfseries}
+
+% Dotted leaders
+\renewcommand{\cftdotsep}{1}
+
+% Extra breathing space between chapters
+\setlength{\cftbeforechapskip}{6pt}
+
+% ---------- LIST OF FIGURES FORMAT ----------
+\renewcommand{\listfigurename}{LIST OF FIGURES}
+
+\makeatletter
+\renewcommand{\@cftmakeloftitle}{%
+\chapter*{%
+\centering
+\fontsize{14pt}{16pt}\selectfont
+\textbf{LIST OF FIGURES}
+}
+}
+\makeatother
+
+% Spacing similar to TOC
+
+\setlength{\cftbeforeloftitleskip}{17pt}
+\setlength{\cftafterloftitleskip}{20pt}
+\setlength{\cftfignumwidth}{3.5em}
+
+% ---------- LIST OF TABLES FORMAT ----------
+\renewcommand{\listtablename}{LIST OF TABLES}
+
+\makeatletter
+\renewcommand{\@cftmakelottitle}{%
+\chapter*{%
+\centering
+\fontsize{14pt}{16pt}\selectfont
+\textbf{LIST OF TABLES}
+}
+}
+\makeatother
+
+% Spacing similar to TOC & LOF
+\setlength{\cftbeforelottitleskip}{17pt}
+\setlength{\cftafterlottitleskip}{20pt}
+\setlength{\cfttabnumwidth}{3.5em}
+
+% ---------- Custom LOF / LOT Continuous Sequential Numbering ---
+\newcounter{listcount}
+\makeatletter
+\let\oldlistoffigures\listoffigures
+\renewcommand{\listoffigures}{%
+\begingroup
+\setcounter{listcount}{0}%
+\let\oldnumberline\numberline
+\renewcommand\numberline[1]{\stepcounter{listcount}\oldnumberline{\arabic{listcount}}}%
+
+\oldlistoffigures
+\endgroup
+}
+\let\oldlistoftables\listoftables
+\renewcommand{\listoftables}{%
+\begingroup
+\setcounter{listcount}{0}%
+\let\oldnumberline\numberline
+\renewcommand\numberline[1]{\stepcounter{listcount}\oldnumberline{\arabic{listcount}}}%
+\oldlistoftables
+\endgroup
+}
+\makeatother
+
+% ---------------- Page Setup ----------------
+\geometry{
+left=1.25in,
+right=1in,
+top=1in,
+bottom=1in
+}
+
+\onehalfspacing
+
+% ---------------- Header & Footer for Main Content ----------------
+\fancypagestyle{maincontent}{
+\fancyhf{}
+\fancyhead[R]{\small Artify -- Artist Booking and Community Platform}
+\fancyfoot[L]{\small Saintgits College of Engineering}
+\fancyfoot[R]{\small \thepage}
+
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+}
+
+% ---------------- Chapter Format (KTU Style) ----------------
+\titleformat{\section}
+{\bfseries\fontsize{14pt}{16pt}\selectfont}
+{\thesection}
+{1em}
+{}
+
+\titleformat{\subsection}
+{\bfseries\fontsize{12pt}{14pt}\selectfont}
+{\thesubsection}
+{1em}
+{}
+\newcommand{\bfFourteen}[1]{{\fontsize{14pt}{16pt}\selectfont\textbf{#1}}}
+% ---------- FIX TOC TOP SPACING ----------
+\usepackage{tocloft}
+
+% Remove extra padding before TOC title
+\setlength{\cftbeforetoctitleskip}{17pt}
+
+% Optional: space after TOC title
+\setlength{\cftaftertoctitleskip}{20pt}
+
+\makeatletter
+\renewenvironment{thebibliography}[1]
+{\section*{}\@mkboth{}{}%
+\list{\@biblabel{\@arabic\c@enumiv}}%
+{\settowidth\labelwidth{\@biblabel{#1}}%
+
+\leftmargin\labelwidth
+\advance\leftmargin\labelsep
+\itemsep=0.6\baselineskip
+\usecounter{enumiv}%
+\let\p@enumiv\@empty
+\renewcommand\theenumiv{\@arabic\c@enumiv}}%
+\sloppy}
+{\endlist}
+\makeatother
+
+\begin{document}
+
+% ===================== PAGE 1 : TITLE PAGE =====================
+\thispagestyle{empty}
+
+\begin{center}
+\vspace*{0.3cm}
+
+\bfFourteen{PROJECT REPORT}\\[0.3cm]
+\bfFourteen{ON}\\[0.3cm]
+\bfFourteen{ARTIFY -- ARTIST BOOKING AND COMMUNITY PLATFORM}\\[0.6cm]
+
+\bfFourteen{Submitted By}\\[0.2cm]
+\bfFourteen{JERRILL SHAJI -- MGP21NMC0XX}\\[0.5cm]
+
+\bfFourteen{To}\\[0.2cm]
+\textit{the APJ Abdul Kalam Technological University in partial}\\
+\textit{fulfillment of the requirements for the award of the degree of}\\[0.5cm]
+
+\bfFourteen{MASTER OF COMPUTER APPLICATIONS (INTEGRATED)}\\[0.6cm]
+
+\bfFourteen{Under the guidance of}\\[0.3cm]
+\bfFourteen{Dr. Jijo Varghese}\\
+\bfFourteen{Assistant Professor (Sr)}\\[0.8cm]
+
+\includegraphics[width=4.5cm]{saintgitslogo.jpg}\\[0.8cm]
+
+\bfFourteen{DEPARTMENT OF COMPUTER APPLICATIONS}\\[0.25cm]
+\bfFourteen{SAINTGITS COLLEGE OF ENGINEERING (AUTONOMOUS)}\\
+\bfFourteen{PATHAMUTTOM, KOTTAYAM, KERALA -- 686532}\\[0.3cm]
+
+\textit{(Approved by AICTE and affiliated to APJ Abdul Kalam Technological University)}\\[0.6cm]
+
+\bfFourteen{APRIL 2026}
+
+\end{center}
+
+% ===================== PAGE 2 : BONAFIDE =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+\fontsize{16pt}{18pt}\selectfont
+\textbf{SAINTGITS COLLEGE OF ENGINEERING (AUTONOMOUS)}\\
+Kottukulam Hills, Pathamuttom, Kottayam, Kerala -- 686532
+\end{center}
+
+\vspace{0.2cm}
+
+\begin{center}
+\includegraphics[width=4.5cm]{saintgitslogo.jpg}
+\end{center}
+
+\vspace{0.1cm}
+
+\begin{center}
+\fontsize{16pt}{18pt}\selectfont
+\textbf{BONAFIDE CERTIFICATE}
+\end{center}
+
+\vspace{0.2cm}
+
+Certified that this report entitled as \textbf{Artify -- Artist Booking and Community Platform} submitted by \textbf{JERRILL SHAJI - MGP21NMC0XX} to the APJ Abdul Kalam Technological University in partial fulfillment of the requirements for the award of the Degree of \textbf{Master of Computer Applications (Integrated)} is a bonafide record of the project work carried out by him under our guidance and supervision. This report in any form has not been submitted to any other University or Institute for any purpose.
+
+\vspace{2.2cm}
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\raggedright
+\textbf{Dr. Jijo Varghese}\\
+Internal Guide
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\textbf{Dr. Jijo Varghese}\\
+Project Co-ordinator
+\end{minipage}
+
+\vspace{1.8cm}
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\raggedright
+\textbf{Dr. Rani Saritha R}\\
+Head Of Department
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\textbf{Dr. Sudha T}\\
+Principal
+\end{minipage}
+
+\vspace{1.8cm}
+
+\textit{Viva-voce held on:}
+
+\newpage
+\begin{figure}[H]
+\thispagestyle{empty}
+\centering
+\includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{devuCertificate.pdf}
+\end{figure}
+% ===================== PAGE 3 : ACKNOWLEDGEMENT =====================
+
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{ACKNOWLEDGEMENT}}
+
+\end{center}
+
+\vspace{1cm}
+
+At the outset, I thank the lord almighty for his abundant grace, strength and hope to make our endeavour a success. I express my deep-felt gratitude to \textbf{Dr. Sudha T.}, Principal, Saintgits College of Engineering (Autonomous) for her warm support with regard to the work and to the management for providing the facilities required.
+
+I would like to place my gratitude to \textbf{Prof. Mini Punnoose,} Director, Department of Computer Applications, Saintgits College of Engineering (Autonomous) for her constant encouragement. I express my sense of gratitude to \textbf{Dr. Rani Saritha R}, Head of the Department, Department of Computer Applications, Saintgits College of Engineering (Autonomous), for her support and guidance.
+
+I am profoundly grateful to \textbf{Dr. Jijo Varghese,} my project guide and \textbf{Dr. Jijo Varghese,} the project co-ordinator for their valuable guidance, help, suggestions and assessment.
+
+Furthermore, I would like to thank all others especially my parents and numerous friends. This project report would not have been a success without their inspiration, valuable suggestions and moral support from them throughout its course.
+
+\vspace{2cm}
+
+\begin{flushright}
+\textbf{JERRILL SHAJI}
+\end{flushright}
+
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{DECLARATION}}
+
+\end{center}
+
+\vspace{1cm}
+
+I undersigned hereby declare that this project report \textbf{``Artify -- Artist Booking and Community Platform''}, submitted for partial fulfilment of the requirements for the award of Degree of Master of Computer Applications of the APJ Abdul Kalam Technological University, Kerala is a bonafide work done by me under supervision of Dr. Jijo Varghese, Assistant Professor (Sr). This submission represents my ideas in my own words and where ideas or words of other have been included, I have adequately and accurately cited and referenced the original sources. I also declare that I have adhered to ethics of academic honesty and integrity and have not misrepresented or fabricated any data or idea or fact or source in my submission. I understand that any violation of the above will be a cause for disciplinary action by the institute and/or the University and can also evoke penal action from the sources which have thus not been properly cited or from whom proper permission has not been obtained. This report has not been previously formed the basis for the award of any degree, diploma or similar title of any other University.
+
+\vspace{2cm}
+
+\noindent
+
+\begin{minipage}{0.5\textwidth}
+\text{Place: Pathamuttom}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\textwidth}
+\begin{flushright}
+\textbf{JERRILL SHAJI}
+\end{flushright}
+\end{minipage}
+
+\vspace{0.5cm}
+
+\noindent
+\text{Date:}
+% ===================== PAGE 4 : ABSTRACT =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{ABSTRACT}}
+\end{center}
+\vspace{1cm}
+The music and performing arts industry in Kerala faces significant challenges in connecting independent artists with event organizers. Traditional methods of discovering, hiring, and managing artists for events rely heavily on personal contacts, word-of-mouth referrals, and fragmented communication channels, which are inefficient, non-transparent, and limit opportunities for emerging talent. To address these challenges, this project presents \textbf{Artify}, a comprehensive full-stack web-based platform that serves as an integrated artist booking and community ecosystem for musicians and event organizers in Kerala.
+
+The system enables two distinct user roles -- \textbf{Artists} and \textbf{Managers} (event organizers) -- to interact seamlessly through a unified interface. Artists can create detailed profiles showcasing their stage names, genres, portfolio images, pricing information, and social media links. Managers can create and publish events with complete details including venue information, budgets, dates, and required artist roles. The platform features a revolutionary two-way booking system where either party can initiate engagement, supported by real-time encrypted messaging using \textbf{AES-GCM encryption} implemented through the \textbf{Web Crypto API} for secure communication.
+
+The frontend is built using \textbf{React 19} with \textbf{Vite} as the modern build tool and \textbf{Tailwind CSS v4} for responsive styling, providing a fast and intuitive single-page application experience. Key React libraries include \textbf{React Router DOM v7} for client-side routing, \textbf{Lucide React} and \textbf{React Icons} for iconography, and \textbf{React Easy Crop} for image cropping functionality. The backend leverages \textbf{Supabase} as a comprehensive Backend-as-a-Service (BaaS) platform, utilizing \textbf{PostgreSQL} for relational data storage, \textbf{Supabase Auth} for secure authentication, \textbf{PostgREST} for auto-generated RESTful APIs, and \textbf{Supabase Realtime} for live updates through WebSocket subscriptions.
+
+Additional advanced features include geolocation-aware artist discovery using the \textbf{Nominatim Geocoding API} for coordinate lookup and \textbf{Haversine distance calculations} implemented in PostgreSQL for proximity-based searches, district-based filtering across Kerala's 14 districts, a community feed with posts and social interactions, artist ratings and reviews using a \textbf{Bayesian rating algorithm} for fair trending scores, and a simulated payment processing system for tracking booking transactions.
+
+The platform employs modern development tools including \textbf{Visual Studio Code} as the primary IDE, \textbf{Git} and \textbf{GitHub} for version control, \textbf{ESLint} for code quality, and \textbf{Babel} with the \textbf{React Compiler plugin} for optimized builds. The database schema utilizes \textbf{Row Level Security (RLS)} policies for data protection, \textbf{triggers} for automatic profile creation, and \textbf{foreign key constraints} for data integrity.
+
+The system is scalable, secure, and optimized for the Kerala music ecosystem, making it adaptable to other regional creative industries. This project demonstrates comprehensive full-stack engineering, real-time communication, client-side encryption, geospatial computing, and modern web development practices, making it a valuable solution for bridging the gap between artists and event organizers while empowering the creative community through technology.
+
+% ===================== TABLE OF CONTENTS =====================
+\pagenumbering{gobble}
+\pagestyle{empty}
+
+\tableofcontents
+
+\clearpage
+
+\listoffigures
+
+\clearpage
+
+\listoftables
+
+\clearpage
+
+% ===================== MAIN CONTENT =====================
+\newpage
+\pagenumbering{arabic}
+\pagestyle{maincontent}
+\setcounter{chapter}{1}
+\addcontentsline{toc}{chapter}{CHAPTER 1 \quad INTRODUCTION}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 1}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{INTRODUCTION}}
+\end{minipage}}
+
+\clearpage
+
+\section{Introduction}
+The music and performing arts ecosystem in Kerala is rich and diverse, encompassing genres ranging from Carnatic and Hindustani classical to contemporary Indie, Pop, Rock, Rap, and DJ performances. However, the process of connecting talented artists with event organizers who require their services remains largely informal and fragmented. Event managers typically rely on personal networks, phone calls, and word-of-mouth recommendations to find and book artists, while independent musicians struggle to gain visibility and access new opportunities beyond their immediate circles.
+
+To address these challenges, the project Artify has been developed as a modern, web-based platform that connects musicians with event organizers through a streamlined digital interface. The system provides a comprehensive solution that integrates artist profiles, event management, booking workflows, real-time messaging, community engagement, and payment tracking into a single unified platform. This eliminates the need for fragmented communication channels and significantly improves efficiency for both artists and managers.
+
+Artify enables artists to create detailed profiles that showcase their stage names, genres, portfolio images, videos, pricing information, and social media links. Event organizers, referred to as Managers within the platform, can create and publish events with complete details including venue, date, budget range, and required artist roles. The two-way booking system allows either artists or managers to initiate engagement, providing flexibility that traditional hiring methods lack.
+
+One of the key features of Artify is its geolocation-aware artist discovery system. By leveraging the Nominatim geocoding API and the Haversine formula for distance calculations, the platform enables managers to search for artists based on proximity, district, genre, and ratings. This is particularly valuable in Kerala's geographically distributed cultural landscape, where events occur across all 14 districts and accessibility varies significantly.
+
+The platform also incorporates real-time encrypted messaging using AES-GCM encryption through the Web Crypto API. This ensures that all communications between artists and managers -- including booking proposals, negotiation details, and payment confirmations -- are transmitted securely. The messaging system supports embedded metadata for bookings and payments, creating a seamless workflow from discovery to payment completion.
+
+In addition to transactional features, Artify includes a community engagement module. Users can create posts with images, hashtags, and location tags, follow other users, and interact with a social feed. A featured artists carousel highlights top-rated performers, and a trending score algorithm based on Bayesian rating principles ensures fair visibility for both established and emerging artists.
+
+The system also features artist ratings and reviews, where managers can rate artists on a 1--5 scale with written comments after event completion. These ratings are aggregated and displayed on artist profiles, providing transparency and accountability within the platform.
+
+Overall, Artify aims to democratize the artist booking process by providing an accessible, transparent, and efficient platform that benefits both artists seeking opportunities and managers seeking talent. The platform empowers the Kerala music community by reducing barriers to discovery and engagement.
+
+\section{Organisation Profile}
+The development of the Artify project is associated with an academic environment that emphasizes innovation, research, and practical learning in the field of computer science and information technology. The project has been undertaken as part of the academic curriculum in the Master of Computer Applications (MCA) program at Saintgits College of Engineering, Kerala.
+
+Saintgits College of Engineering is a well-established institution known for its commitment to academic excellence and technical innovation. The institution provides a strong foundation in engineering and technology, encouraging students to engage in research-oriented projects and develop solutions to real-world problems. The MCA program, in particular, focuses on equipping students with the necessary skills in software development, data analytics, artificial intelligence, and system design.
+
+The college promotes a hands-on learning approach, where students are encouraged to apply theoretical knowledge to practical scenarios. Through workshops, seminars, and project-based learning, students gain exposure to modern technologies and industry practices. The institution also supports interdisciplinary learning, allowing students to explore emerging fields such as full-stack web development, cloud computing, real-time systems, and human-centered design.
+
+The Artify project reflects the institution's emphasis on innovation and practical application. It has been developed as part of a project initiative aimed at addressing real-world challenges in the music and performing arts industry in Kerala. The project demonstrates the integration of various modern technologies including React, Supabase, PostgreSQL, real-time communication, client-side encryption, and geospatial computing.
+
+The academic environment also fosters collaboration and teamwork. Projects like Artify are developed to enhance communication, coordination, and problem-solving skills. Faculty guidance plays a crucial role in ensuring that the project meets academic standards while also encouraging creativity and independent thinking.
+
+Furthermore, the institution provides access to modern development tools and platforms such as Visual Studio Code, GitHub, and cloud-based services, which are essential for building scalable and efficient applications. Students are also encouraged to participate in conferences, workshops, and technical events, which helps them stay updated with the latest trends in technology.
+
+In summary, the organization behind the Artify project is an academic institution that prioritizes innovation, skill development, and real-world problem-solving. The project serves as a practical demonstration of the knowledge and skills acquired during the MCA program, highlighting the institution's commitment to producing industry-ready professionals.
+
+\section{Objectives Of The Project}
+The primary objective of the Artify project is to design and develop a comprehensive web-based platform that connects musicians and performing artists with event organizers in Kerala. The system aims to streamline the entire workflow from artist discovery and booking to communication, payment, and community engagement within a single integrated platform.
+
+One of the key objectives of the project is to provide a role-based user experience. The system supports two distinct user roles -- Artists and Managers -- each with tailored dashboards, features, and workflows. Artists can manage their profiles, view and respond to booking requests, track earnings, and engage with the community. Managers can create events, discover artists, send booking offers, and manage event budgets. This role-based design ensures that each user type has access to relevant functionality without unnecessary complexity.
+
+Another important objective is to implement a two-way booking system. Unlike traditional platforms where only one party can initiate contact, Artify allows both artists and managers to propose bookings. Managers can send offers to artists for specific events, while artists can browse open gigs and express interest. This bidirectional approach increases engagement and provides flexibility for both parties.
+
+The project also aims to enable geolocation-aware artist discovery. By integrating the Nominatim geocoding API and implementing the Haversine distance formula, the system allows managers to search for artists based on proximity to their event location. Combined with filtering options for district, genre, and rating, this feature ensures efficient and relevant search results.
+
+A critical objective is to ensure secure communication through end-to-end encrypted messaging. The system implements AES-GCM encryption using the Web Crypto API, ensuring that all messages between users are encrypted on the client side before being stored in the database. This protects sensitive information such as booking details, negotiation terms, and payment confirmations.
+
+The project further aims to build a community engagement platform where users can create posts with images and hashtags, follow other users, and interact with a social feed. This feature fosters a sense of community among artists and managers, promoting collaboration and visibility.
+
+Another objective is to implement an artist rating and review system. After event completion, managers can rate artists on a scale of 1 to 5 with written comments. These ratings are aggregated using a fair algorithm and displayed on artist profiles, providing transparency and helping future managers make informed booking decisions.
+
+The project also focuses on implementing a simulated payment processing system that tracks payment status for each booking, enabling artists to request payments and managers to confirm transactions within the platform.
+
+Finally, the project aims to create a scalable and maintainable system using modern web technologies. The use of React 19, Vite, Tailwind CSS, and Supabase ensures that the platform is performant, responsive, and capable of handling real-time updates through WebSocket subscriptions.
+
+Overall, the objectives of the Artify project are centered around improving transparency, accessibility, and efficiency in the artist-event organizer ecosystem through intelligent automation, modern design, and secure communication.
+
+\section{Scope and Availability}
+The scope of the Artify project extends across the music and performing arts industry in Kerala, addressing the critical need for a digital platform that connects artists with event organizers. The system is designed to handle the complete lifecycle of artist-event engagement, from discovery and booking to communication, payment, and community interaction. Its applicability spans multiple use cases within the creative industry.
+
+One of the primary areas of application is in event management. Event organizers in Kerala frequently require musicians and performers for weddings, cultural festivals, college events, corporate functions, and religious ceremonies. Artify enables these organizers to discover and book artists efficiently, replacing the traditional reliance on personal contacts and word-of-mouth referrals. The platform's geolocation-aware search and district-based filtering make it particularly useful for events across Kerala's 14 districts.
+
+The system is also valuable for independent musicians and bands seeking to expand their reach. Emerging artists who lack established networks can create profiles on Artify to gain visibility among event organizers. The rating and review system provides a merit-based mechanism for building reputation, ensuring that talent is recognized regardless of personal connections.
+
+In addition, Artify serves as a community platform for the music ecosystem. Artists can share their work, follow other musicians, and engage with a social feed that promotes collaboration and networking. The collaboration discovery feature enables artists to find potential collaborators based on genre, location, and availability.
+
+The platform is applicable across various music genres prevalent in Kerala, including Carnatic, Hindustani, Indie, Pop, Rock, Rap, and DJ performances. The genre-based filtering system ensures that managers can find artists who match the specific requirements of their events.
+
+However, the current scope of the project is limited to the Kerala region, with district data and geocoding specifically configured for the 14 districts of Kerala. While the architecture is designed to be extensible, the current implementation does not yet support nationwide or international deployment. Additionally, the payment system is simulated and does not integrate with actual payment gateways such as Razorpay or Stripe.
+
+The platform currently focuses on the music and performing arts domain and does not extend to other creative fields such as visual arts, photography, or dance, although the modular architecture allows for future expansion into these areas.
+
+Despite these limitations, the Artify platform has significant potential for future expansion. Features such as integration with real payment gateways, support for additional regions, advanced recommendation algorithms, and mobile application development can be incorporated to enhance its capabilities.
+
+In conclusion, the scope of Artify is focused yet adaptable, making it a valuable tool for the Kerala music ecosystem. Its applicability lies in its ability to simplify artist discovery, streamline booking processes, and foster community engagement, thereby supporting a more transparent and efficient creative industry.
+
+\setcounter{chapter}{2}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 2}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{REQUIREMENTS AND ANALYSIS}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 2 \quad REQUIREMENTS AND ANALYSIS}
+\setcounter{section}{0}
+\section{Existing System}
+In the current landscape of the music and performing arts industry in Kerala, the process of connecting artists with event organizers is predominantly informal and fragmented. Despite the vibrant and diverse cultural scene in the state, there is no widely adopted digital platform that facilitates the complete workflow of artist discovery, booking, communication, and payment management. The existing methods rely heavily on traditional approaches that have remained largely unchanged for decades.
+
+The primary method of artist discovery is through personal networks and word-of-mouth referrals. Event organizers typically depend on recommendations from friends, family, or other musicians when searching for performers. This approach is inherently limited, as it restricts opportunities to established artists within existing networks and excludes emerging talent who lack connections. The reliance on personal contacts creates barriers to entry for new artists and perpetuates a closed ecosystem.
+
+Communication between artists and managers occurs through fragmented channels such as phone calls, WhatsApp messages, and social media platforms. These分散的 communication methods lack structure and make it difficult to track booking negotiations, payment agreements, and event details. Important information can be easily lost, and there is no centralized record of interactions.
+
+Payment processing in the current system is entirely manual. Artists and managers negotiate fees offline, and payments are made through cash or bank transfers without any tracking or verification mechanism. This lack of transparency can lead to payment disputes, delayed payments, or non-payment issues, with no recourse for either party.
+
+Artist portfolios are typically maintained through social media pages or basic websites, which do not provide standardized formats for displaying essential information such as pricing, availability, or genres. Event organizers must manually search through multiple platforms to find suitable artists, which is time-consuming and inefficient.
+
+There is no standardized rating or review system in the existing ecosystem. Artists cannot build verifiable reputations based on past performances, and managers have no reliable way to assess the quality and professionalism of artists before booking them. This lack of accountability can result in poor event experiences.
+
+Geographic discovery is another limitation of the current system. Managers cannot easily search for artists based on location or proximity to event venues, which is particularly important in Kerala's geographically diverse landscape. This often results in booking artists from distant locations when qualified local artists are available.
+
+The existing system also lacks community-building features. Artists cannot easily connect with peers, collaborate on projects, or share their work within a dedicated platform. This isolation limits opportunities for growth and networking within the music community.
+
+In summary, the existing system for artist booking and management in Kerala is characterized by inefficiency, lack of transparency, limited discoverability, and absence of security features. These limitations highlight the critical need for a comprehensive digital platform like Artify that addresses these challenges through modern technology and user-centered design.
+
+\section{Proposed System}
+To overcome the limitations of the existing artist booking ecosystem, the proposed solution is the development of Artify -- a comprehensive full-stack web-based platform that serves as an integrated artist booking and community management system. Artify is designed to revolutionize the way musicians and event organizers in Kerala connect, communicate, and collaborate by providing a modern, secure, and efficient digital platform.
+
+The proposed system is built on a modern technology stack that ensures performance, scalability, and security. The frontend is developed using React 19 with Vite as the build tool, providing a fast and responsive single-page application experience. Tailwind CSS v4 is used for styling, ensuring a consistent and modern user interface across all devices. The backend leverages Supabase as a Backend-as-a-Service platform, which provides PostgreSQL for data storage, Supabase Auth for authentication, PostgREST for APIs, and Supabase Realtime for live updates.
+
+The core feature of the proposed system is its two-way booking mechanism. Unlike traditional platforms where only managers can initiate contact, Artify enables both artists and managers to propose bookings. Managers can create events and send offers to specific artists, while artists can browse open gigs and express interest in opportunities. This bidirectional approach increases engagement and provides flexibility for all users.
+
+A key innovation of the system is its geolocation-aware artist discovery. By integrating the Nominatim geocoding API and implementing the Haversine distance formula in PostgreSQL, the platform allows managers to search for artists based on proximity to their event location. This feature is combined with filtering options for Kerala's 14 districts, music genres, and artist ratings, ensuring highly relevant search results.
+
+Security is a primary focus of the proposed system. All messaging between users is protected using AES-GCM encryption implemented through the Web Crypto API. Messages are encrypted on the client side before being stored in the database, ensuring that sensitive information such as booking details and payment negotiations remain confidential.
+
+The system includes a comprehensive artist profile management feature. Artists can create detailed profiles showcasing their stage names, genres, portfolio images, videos, pricing information, and social media links. The platform supports image cropping using React Easy Crop, allowing artists to present professional-looking profiles.
+
+The community engagement module enables users to create posts with images, hashtags, and location tags. Users can follow other artists and managers, interact with a social feed, and build a network within the music community. A featured artists carousel highlights top-rated performers, and a trending score algorithm based on Bayesian rating principles ensures fair visibility for both established and emerging artists.
+
+The rating and review system allows managers to rate artists on a 1--5 scale with written comments after event completion. These ratings are aggregated and displayed on artist profiles, providing transparency and helping future managers make informed booking decisions. The system uses a Bayesian rating algorithm to calculate trending scores, ensuring that artists with fewer but high-quality reviews are not disadvantaged.
+
+The platform includes a simulated payment processing system that tracks payment status for each booking. Artists can request payments through the platform, and managers can confirm transactions, creating a transparent record of all financial interactions. While the current implementation uses simulated payments, the architecture is designed to support integration with real payment gateways such as Razorpay or Stripe in future iterations.
+
+Row Level Security (RLS) policies in PostgreSQL ensure that users can only access data they are authorized to view. Database triggers automatically create artist profiles when users register with the artist role, and foreign key constraints maintain data integrity across all tables.
+
+The proposed system offers the following key features:
+\begin{itemize}
+\item Role-based user experience (Artists and Managers)
+\item Two-way booking system (manager-to-artist and artist-to-manager)
+\item Geolocation-aware artist discovery using Haversine distance
+\item District-based filtering across Kerala's 14 districts
+\item AES-GCM encrypted messaging using Web Crypto API
+\item Artist profile management with image cropping
+\item Community feed with posts, hashtags, and location tags
+\item Artist ratings and reviews with Bayesian trending scores
+\item Simulated payment processing and tracking
+\item Real-time updates using Supabase Realtime
+\item Row Level Security for data protection
+\item Responsive design using Tailwind CSS
+\end{itemize}
+
+The workflow of the proposed system can be described as follows:
+\begin{itemize}
+\item User registers and selects role (Artist or Manager)
+\item Artist creates detailed profile with genres, images, and pricing
+\item Manager creates event with venue, budget, and requirements
+\item Manager searches for artists using location, district, and genre filters
+\item Manager sends booking offer to selected artist
+\item Artist receives notification and can accept, decline, or counter-offer
+\item Both parties communicate through encrypted messaging
+\item Upon agreement, payment is simulated and tracked
+\item After event completion, manager rates and reviews artist
+\item Rating is aggregated and displayed on artist profile
+\end{itemize}
+
+The proposed system significantly improves the artist booking process by reducing manual effort, increasing transparency, enhancing security, and providing a centralized platform for all interactions. It offers a modern, user-friendly solution that empowers both artists and managers in the Kerala music ecosystem.
+
+In conclusion, Artify represents a significant advancement over existing methods by leveraging modern web technologies, real-time communication, client-side encryption, and geospatial computing to create a secure, efficient, and community-driven platform for artist booking and management.
+
+\section{Feasibility Study}
+A feasibility study is an essential phase in system development that evaluates whether the proposed system is practical, achievable, and beneficial within given constraints. The feasibility of the Artify -- Artist Booking and Community Platform can be analyzed from multiple perspectives, including technical, economic, operational, and schedule feasibility.
+
+\textbf{1. Technical Feasibility}
+
+Technical feasibility examines whether the required technologies and resources are available to develop the system. The proposed project utilizes modern and widely-supported technologies such as React 19, Vite, Tailwind CSS, and Supabase. These technologies are well-documented, have active communities, and are suitable for building scalable web applications.
+
+The frontend is built using React 19, the latest version of the popular JavaScript library for building user interfaces. Vite serves as the build tool, providing fast development and optimized production builds. Tailwind CSS v4 is used for styling, offering a utility-first approach that ensures consistency and responsiveness.
+
+The backend leverages Supabase, a comprehensive Backend-as-a-Service platform that provides PostgreSQL for data storage, Supabase Auth for authentication, PostgREST for auto-generated REST APIs, and Supabase Realtime for live updates. These components are well-integrated and reduce the complexity of backend development.
+
+Additional features such as geolocation-aware search are implemented using the Nominatim geocoding API and the Haversine distance formula in PostgreSQL. Encrypted messaging is achieved using AES-GCM encryption through the Web Crypto API, which is supported by all modern browsers.
+
+The development process is supported by tools such as Visual Studio Code, Git, GitHub, and ESLint. These tools are industry-standard and ensure code quality, version control, and collaboration.
+
+Since all required technologies, libraries, and tools are readily available, well-documented, and compatible with each other, the project is technically feasible.
+
+\textbf{2. Economic Feasibility}
+
+Economic feasibility evaluates the cost-effectiveness of the system. The proposed project is developed using primarily open-source and free-tier technologies, which significantly reduces development and operational costs.
+
+React, Vite, Tailwind CSS, and all associated libraries are open-source and free to use. Supabase offers a generous free tier that includes PostgreSQL database, authentication, real-time subscriptions, and storage, making it suitable for academic projects and small-scale deployments.
+
+The Nominatim geocoding API is free to use for non-commercial purposes, and the Web Crypto API is built into modern browsers at no additional cost. Development tools such as Visual Studio Code, Git, and GitHub are also free.
+
+Since the system is web-based, it does not require specialized hardware for deployment. Users can access the platform through any device with a modern web browser and internet connection. The server-side infrastructure is managed by Supabase, eliminating the need for dedicated server maintenance.
+
+The use of free and open-source technologies, combined with the cloud-based infrastructure provided by Supabase, makes the project economically viable with minimal upfront and ongoing costs.
+
+\textbf{3. Operational Feasibility}
+
+Operational feasibility determines how effectively the system can be used in real-world scenarios. The system is designed with a focus on user experience, ensuring that both artists and managers can easily navigate and utilize the platform's features.
+
+The role-based design provides tailored interfaces for Artists and Managers, reducing complexity and ensuring that each user type has access to relevant functionality. The onboarding process is straightforward, with clear registration flows and profile setup wizards.
+
+The geolocation-aware search and district-based filtering make it easy for managers to find suitable artists quickly. The two-way booking system provides flexibility, allowing either party to initiate engagement. The encrypted messaging system ensures secure communication without requiring users to manage encryption keys manually.
+
+The community features, such as posts, hashtags, and following, encourage user engagement and platform retention. The rating and review system provides transparency and helps build trust within the community.
+
+Since the system is web-based, it is accessible from any device with a modern browser, including desktops, laptops, tablets, and smartphones. This ensures wide accessibility for users across Kerala.
+
+The platform's design and functionality align with the needs and expectations of the target audience, making it operationally feasible.
+
+\textbf{4. Schedule Feasibility}
+
+Schedule feasibility assesses whether the project can be completed within the given timeframe. The system is developed using a modular approach, where components such as authentication, profile management, booking system, messaging, and community features are designed and implemented separately.
+
+By dividing the project into phases such as requirement analysis, system design, development, testing, and implementation, effective time management can be achieved. The use of modern development tools and frameworks accelerates the development process.
+
+With proper planning and execution, the project can be successfully completed within the academic schedule. The agile development approach allows for iterative improvements and ensures that core features are prioritized and delivered on time.
+
+\textbf{5. Legal and Ethical Feasibility}
+
+The system ensures that user data, including personal information, messages, and booking details, is handled securely through authentication, authorization, and encryption mechanisms. Row Level Security policies in PostgreSQL ensure that users can only access data they are authorized to view.
+
+The platform is designed for legitimate use in connecting artists with event organizers. The terms of service and community guidelines ensure that the platform is used ethically and responsibly.
+
+The use of open-source technologies and compliance with API usage policies (such as Nominatim's non-commercial use terms) ensures legal compliance.
+
+Privacy and data protection are prioritized through client-side encryption, secure authentication, and secure data storage practices. The system adheres to ethical standards by ensuring transparency, user consent, and data security.
+
+\textbf{Conclusion of Feasibility Study}
+
+The feasibility analysis indicates that the proposed system is:
+\begin{itemize}
+\item Technically achievable with modern, well-supported technologies
+\item Economically viable with minimal costs due to open-source and free-tier tools
+\item Operationally practical with user-centered design and wide accessibility
+\item Schedulable within the given academic timeline
+\item Legally and ethically compliant with data protection and privacy standards
+\end{itemize}
+
+Thus, Artify -- Artist Booking and Community Platform is feasible and suitable for implementation as an effective, secure, and community-driven solution for the Kerala music ecosystem.
+
+\section{Conceptual Modelling}
+Conceptual modelling represents the high-level structure of the system, illustrating how different components interact with each other. It provides a clear understanding of the system's functionality without focusing on implementation details.
+
+The conceptual model of Artify -- Artist Booking and Community Platform consists of the following key entities:
+
+\begin{itemize}
+\item User (Artist and Manager roles)
+\item Artist Profile
+\item Event
+\item Booking
+\item Message
+\item Post
+\item Rating and Review
+\item Payment
+\item Database (PostgreSQL via Supabase)
+\end{itemize}
+
+The \textbf{User} is the primary entity who interacts with the system. Each user has a unique identity managed by Supabase Auth and is associated with a specific role (Artist or Manager). Users can register, log in, and access role-specific features.
+
+The \textbf{Artist Profile} entity represents the detailed profile of an artist, including stage name, genres, portfolio images, pricing, location, and social media links. Each artist profile is linked to a user account and contains information essential for discovery and booking.
+
+The \textbf{Event} entity represents events created by managers. Each event includes details such as title, description, venue, date, budget, and required artist roles. Events are the basis for booking opportunities.
+
+The \textbf{Booking} entity manages the booking workflow between artists and managers. It includes booking status (pending, accepted, declined), proposed terms, and associated event and artist references. The two-way booking system allows either party to initiate a booking.
+
+The \textbf{Message} entity represents encrypted messages exchanged between users. Each message includes encrypted content, sender and recipient references, and metadata for bookings or payments. Messages are encrypted using AES-GCM encryption before storage.
+
+The \textbf{Post} entity represents community posts created by users. Posts can include images, hashtags, location tags, and comments. Users can follow other users and interact with a social feed.
+
+The \textbf{Rating and Review} entity stores ratings and comments provided by managers after event completion. Ratings are aggregated to calculate artist trending scores using a Bayesian algorithm.
+
+The \textbf{Payment} entity tracks payment status for bookings. It includes payment amount, status (pending, completed), and references to the associated booking. The current implementation uses simulated payments.
+
+The \textbf{Database (PostgreSQL)} stores all system-related data, including user accounts, artist profiles, events, bookings, messages, posts, ratings, and payments. Row Level Security policies ensure data protection, and triggers automate profile creation.
+
+\textbf{Relationships Between Entities}
+
+\begin{itemize}
+\item A user can have one artist profile (if role is Artist)
+\item A user can create multiple events (if role is Manager)
+\item A user can participate in multiple bookings (as artist or manager)
+\item A booking is associated with one event and one artist
+\item Users can exchange multiple messages related to a booking
+\item A user can create multiple posts
+\item A booking can have one rating and review
+\item A booking can have one payment record
+\item All data is stored and managed in PostgreSQL via Supabase
+\end{itemize}
+
+\textbf{Conceptual Workflow}
+
+\begin{itemize}
+\item User registers and selects role (Artist or Manager)
+\item Artist creates detailed profile with genres, images, and pricing
+\item Manager creates event with venue, budget, and requirements
+\item Manager searches for artists using location, district, and genre filters
+\item Manager sends booking offer to selected artist
+\item Artist receives notification and reviews offer
+\item Both parties communicate through encrypted messaging
+\item Artist accepts, declines, or counter-offers
+\item Upon agreement, payment is simulated and tracked
+\item Event takes place
+\item Manager rates and reviews artist
+\item Rating is aggregated and displayed on artist profile
+\end{itemize}
+
+This conceptual model provides a clear overview of the system by identifying the main components and their interactions. It helps in understanding how the system operates as an integrated solution for artist booking, community engagement, and secure communication.
+
+\section{Planning and Scheduling}
+Planning and scheduling are essential components of project development, ensuring that the system is completed efficiently within the specified timeframe. The Artify -- Artist Booking and Community Platform follows a structured approach with clearly defined stages, enabling systematic development and successful implementation.
+
+\textbf{Project Planning}
+
+The planning phase involves identifying system requirements, defining objectives, and selecting appropriate technologies. This phase ensures a clear understanding of the project scope and direction. The key activities include:
+
+\begin{itemize}
+\item Requirement analysis for artist booking, community features, and encrypted messaging
+\item System architecture design for React frontend and Supabase backend integration
+\item Selection of technologies such as React 19, Vite, Tailwind CSS, Supabase, and Web Crypto API
+\item Resource allocation and task distribution
+\end{itemize}
+
+A well-defined roadmap is prepared to guide the development process and ensure all objectives are achieved effectively.
+
+\textbf{Project Phases}
+
+The project is divided into the following phases:
+
+\begin{itemize}
+\item Requirement Analysis Phase: Understanding user needs for artist discovery, booking, and community engagement
+\item Design Phase: Creating system architecture, database schema, and user interface design
+\item Development Phase: Implementing modules such as authentication, profile management, booking system, messaging, and community features
+\item Testing Phase: Validating system performance, encryption, geolocation search, and real-time updates
+\item Deployment Phase: Final implementation, user testing, and documentation
+\end{itemize}
+
+\textbf{Scheduling Approach}
+
+The project follows a time-based schedule similar to a Gantt chart, where each phase is assigned a specific duration to ensure timely completion.
+
+\textbf{Sample Timeline:}
+
+\begin{itemize}
+\item Week 1--2: Requirement Analysis and Technology Selection
+\item Week 3--4: System Design and Database Schema
+\item Week 5--8: Development of core modules (authentication, profiles, booking, messaging)
+\item Week 9--10: Community features, ratings, and payment tracking
+\item Week 11--12: Testing, debugging, and documentation
+\end{itemize}
+
+\textbf{Risk Management}
+
+Potential risks in the project include:
+
+\begin{itemize}
+\item Delays in development due to integration of multiple technologies
+\item Challenges in implementing client-side encryption correctly
+\item Errors in geolocation calculations or API rate limits
+\item Data security and unauthorized access concerns
+\end{itemize}
+
+These risks are managed through careful planning, continuous testing, and regular monitoring of progress.
+
+\textbf{Tools Used}
+
+\begin{itemize}
+\item React 19, Vite, Tailwind CSS for frontend development
+\item Supabase for backend (PostgreSQL, Auth, Realtime, Storage)
+\item Nominatim API for geocoding
+\item Web Crypto API for AES-GCM encryption
+\item Visual Studio Code for coding and development
+\item GitHub for version control and collaboration
+\item ESLint for code quality
+\item Overleaf for documentation preparation
+\end{itemize}
+
+Effective planning and scheduling ensure that the project is developed in a structured manner, minimizing risks and ensuring successful completion within the given timeframe.
+
+\setcounter{chapter}{3}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 3}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{SYSTEM SPECIFICATION}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 3 \quad SYSTEM SPECIFICATION}
+\setcounter{section}{0}
+\section{Software and Hardware Requirements}
+
+The development and execution of the Artify -- Artist Booking and Community Platform require a well-defined combination of software and hardware resources to ensure smooth performance, reliability, and scalability. As a modern web-based platform integrated with real-time communication and encryption, the solution is designed to operate efficiently using contemporary technologies and commonly available devices.
+
+\subsection{Software Requirements}
+
+The software requirements of the system include programming languages, frameworks, databases, and tools necessary for development and deployment.
+
+The frontend of the application is developed using React 19, which provides a component-based architecture for building interactive user interfaces. Vite is used as the build tool, offering fast development and optimized production builds. Tailwind CSS v4 is used for styling, providing a utility-first approach that ensures consistency and responsiveness.
+
+Key React libraries include React Router DOM v7 for client-side routing and navigation, Lucide React and React Icons for iconography, and React Easy Crop for image cropping functionality.
+
+The backend leverages Supabase as a comprehensive Backend-as-a-Service platform. Supabase provides PostgreSQL for relational data storage, Supabase Auth for secure user authentication, PostgREST for auto-generated RESTful APIs, and Supabase Realtime for live updates through WebSocket subscriptions.
+
+For geolocation features, the Nominatim Geocoding API is used for converting district names to coordinates. The Haversine distance formula is implemented in PostgreSQL for proximity-based calculations.
+
+For security, the Web Crypto API is used to implement AES-GCM encryption for client-side message encryption. This ensures that all communications between users are secured before being stored in the database.
+
+The development process is supported by tools such as Visual Studio Code for coding and debugging, Git and GitHub for version control, and ESLint for code quality assurance.
+
+The major software requirements can be summarized as follows:
+
+\begin{itemize}
+\item Operating System: Windows, Linux, or macOS
+\item Programming Languages: JavaScript (ES6+), SQL
+\item Frontend Technologies: React 19, Vite, Tailwind CSS v4
+\item React Libraries: React Router DOM v7, Lucide React, React Icons, React Easy Crop
+\item Backend Platform: Supabase (PostgreSQL, Auth, Realtime, Storage)
+\item Geocoding API: Nominatim OpenStreetMap
+\item Encryption: Web Crypto API (AES-GCM)
+\item Development Tools: Visual Studio Code, Git, GitHub
+\item Code Quality: ESLint, Babel with React Compiler plugin
+\end{itemize}
+
+\subsection{Hardware Requirements}
+
+The hardware requirements for the system are practical and easily available, as the application is designed for web-based access.
+
+For development purposes, a computer with a modern processor such as Intel Core i3 or higher is sufficient, although higher configurations are recommended for better performance during development. A minimum of 4 GB RAM is required, while 8 GB or more is recommended for smooth multitasking.
+
+The system requires a stable internet connection for accessing Supabase services, geocoding APIs, and deploying the application. Since the platform is web-based, users can access it from any device with a modern web browser.
+
+The key hardware requirements are listed below:
+
+\begin{itemize}
+\item Processor: Intel Core i3 or higher (recommended: i5 or above)
+\item RAM: Minimum 4 GB (recommended: 8 GB)
+\item Storage: At least 10 GB free disk space for development
+\item Network: Stable internet connection (broadband recommended)
+\item Display: Standard monitor (minimum resolution 1366 $\times$ 768)
+\item Browser: Modern web browser (Chrome, Firefox, Edge, or Safari)
+\end{itemize}
+
+Overall, the system requirements are designed to be cost-effective and practical, ensuring easy development and deployment without the need for highly specialized hardware or software. The combination of modern web technologies and cloud-based infrastructure makes the system efficient, scalable, and suitable for the target audience.
+
+\section{Functional Specifications}
+
+The functional specifications of the Artify -- Artist Booking and Community Platform define the core operations and services provided by the system. These specifications describe how the system behaves in response to user actions and how it processes information to ensure secure and efficient artist booking and community engagement.
+
+At the core of the system is the user authentication mechanism, which ensures secure access to the application. Users must register and log in using valid credentials through Supabase Auth. The system supports two distinct roles: Artist and Manager, each with tailored functionality.
+
+The artist profile management functionality allows artists to create and update detailed profiles. Artists can provide their stage name, select genres from a predefined list, upload and crop portfolio images using React Easy Crop, set pricing information, and add social media links. The system automatically creates an artist profile when a user registers with the artist role, using database triggers.
+
+The event management functionality enables managers to create, update, and delete events. Managers can specify event details including title, description, venue, date, budget, and required artist roles. Events are displayed on the manager's dashboard and are visible to artists browsing open gigs.
+
+The geolocation-aware artist discovery feature allows managers to search for artists based on multiple criteria. The system integrates the Nominatim API to convert district names to coordinates and uses the Haversine formula in PostgreSQL to calculate distances. Managers can filter artists by district, genre, and rating, ensuring relevant search results.
+
+The two-way booking system is a core feature that enables both artists and managers to initiate bookings. Managers can send offers to artists for specific events, while artists can express interest in open gigs. The booking workflow includes status tracking (pending, accepted, declined) and negotiation through encrypted messaging.
+
+The encrypted messaging module ensures secure communication between users. All messages are encrypted using AES-GCM encryption through the Web Crypto API before being stored in the database. The system supports embedded metadata for bookings and payments, creating a seamless workflow. Messages are decrypted on the client side when retrieved.
+
+The community engagement module allows users to create posts with images, hashtags, and location tags. Users can follow other users, interact with a social feed, and engage with content through likes and comments. A featured artists carousel highlights top-rated performers based on trending scores.
+
+The rating and review system enables managers to rate artists on a 1--5 scale with written comments after event completion. The system uses a Bayesian rating algorithm to calculate trending scores, ensuring fair visibility for artists with varying numbers of reviews. Ratings are aggregated and displayed on artist profiles.
+
+The simulated payment processing module tracks payment status for bookings. Artists can request payments through the platform, and managers can confirm transactions. While the current implementation uses simulated payments, the architecture supports future integration with real payment gateways.
+
+The data management system, supported by PostgreSQL via Supabase, securely stores all user data, profiles, events, bookings, messages, posts, ratings, and payments. Row Level Security policies ensure that users can only access authorized data. Real-time subscriptions enable live updates for messages, bookings, and feed posts.
+
+Additionally, the system provides a responsive user interface developed using React and Tailwind CSS. The interface is designed to be intuitive and accessible across desktops, laptops, tablets, and smartphones.
+
+In summary, the functional specifications of the system focus on security, usability, real-time communication, and community engagement. These features work together to provide a reliable and efficient solution for artist booking and management in the Kerala music ecosystem.
+
+\section{Tools and Platforms Used}
+
+The development of the \textbf{Artify -- Artist Booking and Community Platform} involves the use of various modern tools and platforms that support different stages of the software development lifecycle. These technologies are selected to ensure efficient development, secure communication, real-time updates, and reliable system performance.
+
+\textbf{Programming Languages:}
+JavaScript (ES6+) is used for both frontend and backend logic. SQL is used for database queries and PostgreSQL-specific features such as triggers and Row Level Security policies.
+
+\vspace{0.4cm}
+
+\textbf{Frontend Framework:}
+React 19 is the core framework for building the user interface. Its component-based architecture and hooks system enable modular and maintainable code.
+
+\vspace{0.4cm}
+
+\textbf{Build Tool:}
+Vite is used as the modern build tool, providing fast development with Hot Module Replacement (HMR) and optimized production builds with code splitting and tree shaking.
+
+\vspace{0.4cm}
+
+\textbf{Styling Framework:}
+Tailwind CSS v4 is used for styling, offering a utility-first approach that ensures consistency, responsiveness, and rapid UI development. The tailwindcss-animate plugin adds animation utilities.
+
+\vspace{0.4cm}
+
+\textbf{React Libraries:}
+React Router DOM v7 is used for client-side routing and navigation. Lucide React and React Icons provide iconography. React Easy Crop enables image cropping for profile pictures and portfolio images.
+
+\vspace{0.4cm}
+
+\textbf{Backend Platform:}
+Supabase is used as the Backend-as-a-Service platform. It provides PostgreSQL for data storage, Supabase Auth for authentication, PostgREST for auto-generated REST APIs, Supabase Realtime for WebSocket-based live updates, and Supabase Storage for file uploads.
+
+\vspace{0.4cm}
+
+\textbf{Database:}
+PostgreSQL is used as the relational database management system. It supports advanced features such as triggers, foreign key constraints, Row Level Security policies, and custom functions for Haversine distance calculations.
+
+\vspace{0.4cm}
+
+\textbf{Geocoding API:}
+Nominatim OpenStreetMap API is used for geocoding district names to coordinates. This enables location-based searches and proximity calculations.
+
+\vspace{0.4cm}
+
+\textbf{Encryption:}
+The Web Crypto API is used for implementing AES-GCM encryption. This ensures client-side encryption of messages before storage, providing end-to-end security for communications.
+
+\vspace{0.4cm}
+
+\textbf{Development Tools:}
+Visual Studio Code is used as the primary IDE, providing features such as syntax highlighting, IntelliSense, debugging, and extensions for React and JavaScript development.
+
+\vspace{0.4cm}
+
+\textbf{Version Control:}
+Git and GitHub are used for version control and project management. They help track code changes, maintain different versions, and support collaboration during development.
+
+\vspace{0.4cm}
+
+\textbf{Code Quality:}
+ESLint is used for linting and maintaining code quality. Babel with the React Compiler plugin is used for optimizing React builds.
+
+\vspace{0.4cm}
+
+\textbf{Execution Environment:}
+The system runs on a web-based platform accessible through modern browsers such as Chrome, Firefox, Edge, and Safari. The backend is hosted on Supabase's cloud infrastructure.
+
+\vspace{0.4cm}
+
+In conclusion, the combination of these tools and platforms enables the development of a robust, efficient, and scalable artist booking platform. They ensure seamless integration between the React frontend and Supabase backend, providing secure authentication, real-time updates, encrypted messaging, and efficient data management.
+
+\section{Development Environment}
+
+\textbf{Visual Studio Code:}
+Visual Studio Code (VS Code) was used as the primary development environment for building the Artify platform. It provides features such as syntax highlighting, IntelliSense, debugging support, and extensions for React, JavaScript, and Tailwind CSS, improving development efficiency.
+
+\vspace{0.4cm}
+
+\textbf{React 19:}
+React 19 was used for building the frontend user interface. Its component-based architecture and hooks system enabled modular development of features such as authentication, profile management, booking workflows, and community feeds.
+
+\vspace{0.4cm}
+
+\textbf{Vite:}
+Vite was used as the build tool, providing fast development with Hot Module Replacement (HMR) and optimized production builds. Its configuration in vite.config.js includes the React plugin and Tailwind CSS integration.
+
+\vspace{0.4cm}
+
+\textbf{Tailwind CSS v4:}
+Tailwind CSS v4 was used for styling all components. Its utility-first approach ensured consistent and responsive design across the application. The @tailwindcss/vite plugin enabled seamless integration with the build process.
+
+\vspace{0.4cm}
+
+\textbf{Supabase:}
+Supabase was used as the Backend-as-a-Service platform. It provided PostgreSQL for data storage, Supabase Auth for user authentication, PostgREST for REST APIs, Supabase Realtime for live updates, and Supabase Storage for image uploads.
+
+\vspace{0.4cm}
+
+\textbf{PostgreSQL:}
+PostgreSQL was used as the database management system for storing user details, artist profiles, events, bookings, messages, posts, ratings, and payments. Advanced features such as triggers, Row Level Security, and foreign key constraints were implemented.
+
+\vspace{0.4cm}
+
+\textbf{React Router DOM v7:}
+React Router DOM was used for implementing client-side routing. It enabled navigation between different views such as home, login, register, dashboard, profile, and messages.
+
+\vspace{0.4cm}
+
+\textbf{Lucide React and React Icons:}
+These libraries were used for iconography throughout the application, providing consistent and modern icons for buttons, navigation, and UI elements.
+
+\vspace{0.4cm}
+
+\textbf{React Easy Crop:}
+React Easy Crop was used for implementing image cropping functionality, allowing users to crop profile pictures and portfolio images before uploading.
+
+\vspace{0.4cm}
+
+\textbf{Nominatim Geocoding API:}
+The Nominatim API was used for converting district names in Kerala to geographic coordinates, enabling location-based searches and proximity calculations.
+
+\vspace{0.4cm}
+
+\textbf{Web Crypto API:}
+The Web Crypto API was used for implementing AES-GCM encryption for client-side message encryption. This ensured that all communications between users were secured before being stored in the database.
+
+\vspace{0.4cm}
+
+\textbf{Git:}
+Git was used as the version control system to track changes and manage code efficiently.
+
+\vspace{0.4cm}
+
+\textbf{GitHub:}
+GitHub was used to host the project repository and manage collaboration.
+
+\vspace{0.4cm}
+
+\textbf{ESLint:}
+ESLint was used for linting JavaScript code and maintaining code quality standards.
+
+\vspace{0.4cm}
+
+\textbf{Babel:}
+Babel with the React Compiler plugin was used for transpiling and optimizing React code.
+
+\vspace{0.4cm}
+
+\textbf{Overleaf (LaTeX):}
+Overleaf was used for preparing project documentation in a structured and professional format.
+
+\vspace{0.4cm}
+
+In conclusion, the combination of VS Code, React 19, Vite, Tailwind CSS, and Supabase, along with supporting libraries and APIs, ensured efficient development and successful implementation of a secure, real-time, and community-driven artist booking platform.
+
+\setcounter{chapter}{4}
+
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 4}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{SYSTEM DESIGN}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 4 \quad SYSTEM DESIGN}
+\setcounter{section}{0}
+
+\section{Module Descriptions}
+
+The Artify -- Artist Booking and Community Platform is designed using a modular architecture, where the system is divided into independent components based on user roles and functionalities. This structure improves system organization, security, and ease of management. The system consists of three main modules: Authentication Module, Artist/Manager Module, and Community Module.
+
+\textbf{1. Authentication Module}
+
+The Authentication Module is responsible for managing user registration, login, and session management. It provides secure access to the system using Supabase Auth.
+
+The functionalities included in this module are:
+
+\begin{itemize}
+
+\item \textbf{User Registration:} Allows users to register with email, password, and role selection (Artist or Manager). The system automatically creates an artist profile if the user selects the Artist role.
+
+\item \textbf{User Login:} Enables registered users to log in using their credentials. Supabase Auth handles secure authentication and session management.
+
+\item \textbf{Password Management:} Provides password reset functionality through email-based recovery links.
+
+\item \textbf{Session Management:} Maintains user sessions and ensures secure access to protected routes.
+
+\item \textbf{Logout:} Provides secure logout functionality for all users.
+
+\end{itemize}
+
+\textbf{2. Artist/Manager Module}
+
+The Artist/Manager Module is the core of the system, providing role-specific features for artists and managers.
+
+The functionalities for \textbf{Artists} include:
+
+\begin{itemize}
+\item \textbf{Profile Management:} Artists can create and update detailed profiles with stage name, genres, portfolio images, pricing, location, and social media links. Image cropping is supported using React Easy Crop.
+
+\item \textbf{Browse Gigs:} Artists can browse open gigs posted by managers, filtered by district, genre, and date.
+
+\item \textbf{Booking Requests:} Artists can receive booking offers from managers and respond with accept, decline, or counter-offer.
+
+\item \textbf{Send Interest:} Artists can express interest in open gigs by sending booking requests to managers.
+
+\item \textbf{Encrypted Messaging:} Artists can communicate securely with managers through AES-GCM encrypted messages.
+
+\item \textbf{Payment Tracking:} Artists can view payment status for completed bookings and request payments.
+
+\item \textbf{Dashboard:} Provides an overview of bookings, earnings, and recent activity.
+
+\end{itemize}
+
+The functionalities for \textbf{Managers} include:
+
+\begin{itemize}
+\item \textbf{Event Management:} Managers can create, update, and delete events with details such as title, venue, date, budget, and required artist roles.
+
+\item \textbf{Artist Discovery:} Managers can search for artists using geolocation-aware filters including district, genre, proximity, and rating.
+
+\item \textbf{Send Booking Offers:} Managers can send booking offers to selected artists for specific events.
+
+\item \textbf{Encrypted Messaging:} Managers can communicate securely with artists through encrypted messages.
+
+\item \textbf{Booking Management:} Managers can view and manage all booking requests and offers.
+
+\item \textbf{Payment Processing:} Managers can confirm payments for completed bookings.
+
+\item \textbf{Rate Artists:} After event completion, managers can rate and review artists.
+
+\item \textbf{Dashboard:} Provides an overview of events, bookings, and payments.
+
+\end{itemize}
+
+\textbf{3. Community Module}
+
+The Community Module enables social engagement and networking within the platform.
+
+The functionalities included in this module are:
+
+\begin{itemize}
+\item \textbf{Create Posts:} Users can create posts with images, hashtags, and location tags.
+
+\item \textbf{Social Feed:} Users can view a feed of posts from followed users and featured artists.
+
+\item \textbf{Follow System:} Users can follow other artists and managers to see their content in the feed.
+
+\item \textbf{Featured Artists:} A carousel highlights top-rated artists based on trending scores.
+
+\item \textbf{Likes and Comments:} Users can interact with posts through likes and comments.
+
+\item \textbf{Hashtags:} Posts can include hashtags for discoverability.
+
+\end{itemize}
+
+Overall, the system is structured around these three modules to ensure efficient operation, secure access control, and smooth user experience. Each module performs specific tasks while contributing to the overall functionality of the platform.
+
+\section{Data / Schema Design}
+
+The data design of the Artify -- Artist Booking and Community Platform is based on a structured relational database model that ensures efficient storage, retrieval, and management of user data, artist profiles, events, bookings, messages, posts, ratings, and payments. The schema is designed using the Entity Relationship (ER) model, which defines the system entities, their attributes, and relationships.
+
+The primary entity in the system is the \textbf{Users (auth.users)} table managed by Supabase Auth. Each user is uniquely identified using the primary key \texttt{id}. The attributes include \texttt{email}, \texttt{encrypted\_password}, \texttt{role} (artist or manager), and authentication metadata. This table ensures secure storage of user credentials and enables authentication.
+
+\vspace{0.3cm}
+
+The \textbf{Artist Profiles (artist\_profiles)} table stores detailed information about artists. It contains attributes such as \texttt{id} (foreign key referencing users), \texttt{stage\_name}, \texttt{genres} (array), \texttt{bio}, \texttt{base\_price}, \texttt{district}, \texttt{location\_coordinates} (geographic point), \texttt{profile\_image}, \texttt{portfolio\_images} (array), \texttt{social\_links} (JSON), and \texttt{created\_at}. This table is automatically populated when a user registers with the artist role using database triggers.
+
+\vspace{0.3cm}
+
+The \textbf{Events (events)} table manages events created by managers. It includes attributes such as \texttt{id}, \texttt{manager\_id} (foreign key referencing users), \texttt{title}, \texttt{description}, \texttt{venue}, \texttt{district}, \texttt{event\_date}, \texttt{budget}, \texttt{required\_roles} (array), \texttt{status} (open, closed, completed), and \texttt{created\_at}. This table stores all event details and is linked to bookings.
+
+\vspace{0.3cm}
+
+The \textbf{Bookings (bookings)} table manages the booking workflow between artists and managers. It includes attributes such as \texttt{id}, \texttt{event\_id} (foreign key), \texttt{artist\_id} (foreign key referencing artist\_profiles), \texttt{manager\_id} (foreign key referencing users), \texttt{status} (pending, accepted, declined, completed), \texttt{proposed\_terms} (JSON), \texttt{created\_at}, and \texttt{updated\_at}. This table tracks all booking requests and their status.
+
+\vspace{0.3cm}
+
+The \textbf{Messages (messages)} table stores encrypted messages between users. It includes attributes such as \texttt{id}, \texttt{sender\_id} (foreign key), \texttt{recipient\_id} (foreign key), \texttt{booking\_id} (foreign key, optional), \texttt{encrypted\_content}, \texttt{iv} (initialization vector), \texttt{auth\_tag}, and \texttt{created\_at}. All message content is encrypted using AES-GCM before storage.
+
+\vspace{0.3cm}
+
+The \textbf{Posts (posts)} table manages community posts. It includes attributes such as \texttt{id}, \texttt{user\_id} (foreign key), \texttt{content}, \texttt{image\_url}, \texttt{hashtags} (array), \texttt{location\_tag}, \texttt{likes\_count}, and \texttt{created\_at}. This table supports the community feed functionality.
+
+\vspace{0.3cm}
+
+The \textbf{Ratings (ratings)} table stores artist ratings and reviews. It includes attributes such as \texttt{id}, \texttt{booking\_id} (foreign key), \texttt{artist\_id} (foreign key), \texttt{manager\_id} (foreign key), \texttt{rating} (1--5), \texttt{comment}, and \texttt{created\_at}. Ratings are linked to completed bookings.
+
+\vspace{0.3cm}
+
+The \textbf{Payments (payments)} table tracks payment status for bookings. It includes attributes such as \texttt{id}, \texttt{booking\_id} (foreign key), \texttt{amount}, \texttt{status} (pending, completed), \texttt{payment\_method}, and \texttt{created\_at}. The current implementation uses simulated payments.
+
+\vspace{0.3cm}
+
+The \textbf{Follows (follows)} table manages user follow relationships. It includes attributes such as \texttt{id}, \texttt{follower\_id} (foreign key), \texttt{following\_id} (foreign key), and \texttt{created\_at}. This enables the social feed functionality.
+
+\vspace{0.3cm}
+
+\textbf{Relationships Between Entities}
+
+\begin{itemize}
+\item One user can have one artist profile (One-to-One relationship between users and artist\_profiles)
+\item One user (manager) can create multiple events (One-to-Many relationship)
+\item One event can have multiple bookings (One-to-Many relationship)
+\item One artist can have multiple bookings (One-to-Many relationship)
+\item One booking can have multiple messages (One-to-Many relationship)
+\item One user can create multiple posts (One-to-Many relationship)
+\item One booking can have one rating (One-to-One relationship)
+\item One booking can have one payment record (One-to-One relationship)
+\item Users can follow multiple other users (Many-to-Many relationship through follows table)
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Database Features}
+
+\begin{itemize}
+\item \textbf{Row Level Security (RLS):} Policies ensure that users can only access data they are authorized to view. For example, artists can only view their own bookings, and managers can only view their own events.
+
+\item \textbf{Triggers:} A trigger automatically creates an entry in artist\_profiles when a new user registers with the artist role.
+
+\item \textbf{Foreign Key Constraints:} Ensure referential integrity across all tables, preventing orphaned records.
+
+\item \textbf{Indexes:} Indexes on frequently queried columns such as district, genres, and event\_date improve search performance.
+
+\item \textbf{Haversine Function:} A custom PostgreSQL function calculates distances between coordinates using the Haversine formula for proximity-based searches.
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{System Workflow Based on Schema}
+
+\begin{itemize}
+\item User registers and is stored in auth.users
+\item If artist, trigger creates entry in artist\_profiles
+\item Manager creates event stored in events table
+\item Manager or artist initiates booking, creating entry in bookings table
+\item Users exchange encrypted messages stored in messages table
+\item Upon booking acceptance, payment record is created in payments table
+\item After event completion, manager creates rating in ratings table
+\item Users create posts stored in posts table
+\item Follow relationships are stored in follows table
+\end{itemize}
+
+\vspace{0.3cm}
+
+The database is normalized to minimize redundancy and maintain data integrity. Foreign key constraints ensure consistency between tables, especially in linking users, events, bookings, and ratings.
+
+In conclusion, the schema design provides a structured and efficient way to manage artist profiles, event bookings, encrypted messaging, community posts, and ratings, supporting the overall functionality of the Artify platform.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{devuSchema.jpeg}
+\caption{ER Diagram of the Artify -- Artist Booking and Community Platform}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{"project tables/db1.png"}
+\caption{Users Table}
+\end{table}
+
+\begin{table}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{"project tables/db2.png"}
+\caption{Artist Profiles Table}
+
+\end{table}
+
+\begin{table}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{"project tables/db3.png"}
+\caption{Events Table}
+\end{table}
+
+\begin{table}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{"project tables/db4.png"}
+\caption{Bookings Table}
+\end{table}
+
+\section{Procedural / Flow Design}
+
+The procedural design of the Artify -- Artist Booking and Community Platform describes the sequence of operations and workflows involved in managing user authentication, artist discovery, booking workflows, encrypted messaging, and community engagement. The system ensures secure and efficient artist booking by integrating React frontend with Supabase backend.
+
+The workflow begins with user authentication. Users register by providing email, password, and selecting their role (Artist or Manager). Supabase Auth handles secure authentication, and if the user selects the Artist role, a database trigger automatically creates an entry in the artist\_profiles table.
+
+For artists, the process continues with profile creation. Artists provide their stage name, select genres from a predefined list, upload and crop portfolio images using React Easy Crop, set pricing, and add location and social media links. The profile is stored in the artist\_profiles table.
+
+For managers, the process begins with event creation. Managers create events by providing title, description, venue, district, date, budget, and required artist roles. The event is stored in the events table and is visible to artists browsing open gigs.
+
+The artist discovery process involves managers searching for artists using multiple filters. The system uses the Nominatim API to convert district names to coordinates. When a manager searches for artists, the Haversine formula in PostgreSQL calculates distances between the event location and artist locations. Results are filtered by district, genre, and rating.
+
+The booking workflow can be initiated by either party. If a manager wants to book an artist, they send a booking offer through the platform. The offer includes event details and proposed terms. The artist receives a notification and can accept, decline, or counter-offer. Alternatively, artists can browse open gigs and express interest by sending a booking request to the manager.
+
+Communication between users occurs through the encrypted messaging system. When a user sends a message, the content is encrypted using AES-GCM encryption through the Web Crypto API on the client side. The encrypted content, initialization vector (IV), and auth tag are stored in the messages table. When the recipient retrieves messages, the content is decrypted on the client side.
+
+If a booking is accepted, a payment record is created in the payments table. The current implementation uses simulated payments, where artists can request payments and managers can confirm transactions. The payment status is updated in the database.
+
+After the event takes place, the manager can rate and review the artist. The rating (1--5) and comment are stored in the ratings table. The system calculates a trending score for the artist using a Bayesian rating algorithm, which is displayed on their profile.
+
+The community engagement workflow allows users to create posts with images, hashtags, and location tags. Users can follow other users, and their posts appear in the follower's social feed. A featured artists carousel highlights top-rated performers based on trending scores.
+
+The overall process can be summarized as follows:
+
+\begin{enumerate}
+\item User registers and selects role (Artist or Manager)
+\item Artist creates detailed profile with genres, images, and pricing
+\item Manager creates event with venue, budget, and requirements
+\item Manager searches for artists using location, district, and genre filters
+\item Manager sends booking offer to selected artist (or artist expresses interest in gig)
+\item Artist receives notification and reviews offer
+\item Both parties communicate through encrypted messaging
+\item Artist accepts, declines, or counter-offers
+\item Upon agreement, payment is simulated and tracked
+\item Event takes place
+\item Manager rates and reviews artist
+\item Rating is aggregated and displayed on artist profile
+\item Users engage with community through posts and social feed
+\end{enumerate}
+
+This procedural flow ensures secure access control, reduces manual effort, enhances security through encryption, and improves efficiency in artist booking and community engagement.
+
+\vspace{0.5cm}
+
+\subsection*{Data Flow Diagram}
+
+The Data Flow Diagram (DFD) illustrates how data moves within the Artify platform. It includes both Level 0 and Level 1 diagrams to represent system functionality.
+
+At \textbf{Level 0}, the system is represented as a single process interacting with two external entities: the User (Artist/Manager) and the Supabase Backend. The user provides inputs such as registration details, login credentials, profile information, event details, booking requests, messages, and posts. The system returns authentication tokens, search results, booking confirmations, encrypted messages, and feed updates. All data is stored and retrieved from the PostgreSQL database via Supabase.
+
+At \textbf{Level 1}, the system is divided into multiple processes:
+
+\begin{itemize}
+\item \textbf{Authentication Module (1.1):} Handles user registration, login, and session management
+\item \textbf{Profile Management Module (1.2):} Manages artist profile creation and updates
+\item \textbf{Event Management Module (1.3):} Handles event creation and management by managers
+\item \textbf{Booking Module (1.4):} Manages two-way booking workflow between artists and managers
+\item \textbf{Messaging Module (1.5):} Handles AES-GCM encryption and decryption of messages
+\item \textbf{Community Module (1.6):} Manages posts, feeds, follows, and featured artists
+\item \textbf{Rating Module (1.7):} Handles artist ratings and trending score calculations
+\end{itemize}
+
+The data stores include:
+\begin{itemize}
+\item \textbf{D1 (Users):} Stores user authentication data
+\item \textbf{D2 (Artist Profiles):} Stores artist profile information
+\item \textbf{D3 (Events):} Stores event details
+\item \textbf{D4 (Bookings):} Stores booking requests and status
+\item \textbf{D5 (Messages):} Stores encrypted messages
+\item \textbf{D6 (Posts):} Stores community posts
+\item \textbf{D7 (Ratings):} Stores artist ratings and reviews
+\item \textbf{D8 (Payments):} Stores payment records
+\end{itemize}
+
+The DFD also highlights the integration of client-side encryption, where messages are encrypted before being stored in the database. The geolocation-aware search uses the Nominatim API for geocoding and the Haversine formula for distance calculations. Real-time updates through Supabase Realtime ensure that users receive instant notifications for messages, bookings, and feed posts.
+
+\begin{figure}[H]
+
+\centering %
+\includegraphics[width=0.75\textwidth]{devudfd.jpeg} \caption{Level 0 and Level 1 DFD of Artify -- Artist Booking and Community Platform}
+\end{figure}
+
+The DFD clearly shows how user data, profile information, events, bookings, encrypted messages, posts, and ratings flow between different modules, ensuring proper coordination and system functionality.
+
+\vspace{0.5cm}
+
+\subsection*{System Architecture}
+
+The system architecture of the Artify -- Artist Booking and Community Platform is designed as a modern three-tier architecture consisting of the Presentation Layer, Application Layer, and Data Layer.
+
+The \textbf{Presentation Layer} is built using React 19 with Vite and Tailwind CSS v4. It includes components for authentication, profile management, event creation, booking workflows, messaging, and community feeds. The responsive design ensures accessibility across desktops, laptops, tablets, and smartphones.
+
+The \textbf{Application Layer} consists of the React application logic, Supabase client, and various services. The Supabase client handles communication with the backend, including authentication, database queries, real-time subscriptions, and file storage. Services implement business logic such as geolocation calculations, encryption/decryption, and Bayesian rating algorithms.
+
+The \textbf{Data Layer} is powered by PostgreSQL via Supabase. It includes all database tables (users, artist\_profiles, events, bookings, messages, posts, ratings, payments, follows), Row Level Security policies, triggers, and custom functions. Supabase Realtime enables WebSocket-based live updates for messages, bookings, and feed posts.
+
+External services integrated into the architecture include:
+\begin{itemize}
+\item \textbf{Nominatim Geocoding API:} For converting district names to coordinates
+\item \textbf{Web Crypto API:} For AES-GCM encryption and decryption
+\item \textbf{Supabase Auth:} For secure user authentication
+\item \textbf{Supabase Storage:} For storing profile and portfolio images
+\end{itemize}
+
+The architecture ensures a smooth flow of data between the frontend, backend, and database. It supports secure authentication, real-time updates, client-side encryption, geospatial computing, and efficient data management.
+
+\begin{figure}[H]
+\centering %
+\includegraphics[width=0.75\textwidth]{devuSystemArch.jpeg} \caption{System Architecture of Artify -- Artist Booking and Community Platform}
+\end{figure}
+
+Overall, the system architecture provides a reliable framework for implementing a modern artist booking platform that reduces manual effort, enhances security through encryption, and improves user experience through real-time updates and community engagement.
+
+\section{User Interface Design}
+
+The user interface (UI) design of the Artify -- Artist Booking and Community Platform plays a crucial role in ensuring usability, efficiency, and user satisfaction. The system is designed with a focus on simplicity, clarity, and ease of navigation, enabling artists, managers, and administrators to interact with the system effectively.
+
+The interface is structured into multiple screens based on user roles and functionalities. Each interface is designed to provide relevant features with minimal complexity.
+
+The \textbf{Landing Page} serves as the entry point for all users. It features a modern hero section with the Artify branding, key features overview, and call-to-action buttons for registration and login. The design uses Tailwind CSS for responsive layouts and smooth animations.
+
+The \textbf{Authentication Pages} include login and registration forms. The registration form allows users to select their role (Artist or Manager), which determines their access to role-specific features. Clear input fields, validation messages, and error prompts guide users during authentication.
+
+For \textbf{Artists}, the \textbf{Dashboard} provides an overview of upcoming bookings, recent messages, earnings summary, and quick actions such as updating profile or browsing gigs. The \textbf{Profile Management Page} enables artists to create and update their profiles with stage name, genres, bio, pricing, location, and portfolio images. The image cropping interface using React Easy Crop provides an intuitive way to crop images before uploading.
+
+The \textbf{Browse Gigs Page} allows artists to view open events posted by managers. Filters for district, genre, date, and budget help artists find relevant opportunities. The \textbf{Booking Requests Page} displays all incoming and outgoing booking requests with status indicators (pending, accepted, declined).
+
+For \textbf{Managers}, the \textbf{Dashboard} shows upcoming events, active bookings, recent artist interactions, and quick actions such as creating events or searching for artists. The \textbf{Event Management Page} enables managers to create, edit, and delete events with complete details including venue, date, budget, and required artist roles.
+
+The \textbf{Artist Discovery Page} is a key feature for managers. It provides advanced search functionality with filters for district, genre, proximity (using Haversine distance), and rating. Artist cards display profile images, stage names, genres, ratings, and base prices. The \textbf{Booking Management Page} allows managers to view and manage all booking requests and offers.
+
+The \textbf{Messaging Interface} is accessible to both artists and managers. It features a conversation list on the left and message thread on the right. Messages are displayed in chat bubbles with timestamps. The interface indicates when messages are encrypted and supports embedded metadata for bookings and payments.
+
+The \textbf{Community Feed Page} displays posts from followed users and featured artists in a scrollable feed. Users can create posts with images and hashtags, like and comment on posts, and follow other users. The \textbf{Featured Artists Carousel} highlights top-rated performers based on trending scores.
+
+The \textbf{Ratings and Reviews Page} allows managers to rate artists after event completion. A star rating interface (1--5 stars) with a comment box is provided. Artists can view their ratings and reviews on their profile page.
+
+The \textbf{Payment Tracking Page} displays payment status for all bookings. Artists can request payments, and managers can confirm transactions. Payment history is shown with dates and amounts.
+
+Consistency is maintained across all interfaces in terms of layout, color scheme, fonts, and navigation structure. The use of Lucide React and React Icons provides consistent iconography throughout the application. Responsive design ensures that the interface adapts seamlessly to different screen sizes.
+
+The interface also integrates visual feedback mechanisms such as success messages, error alerts, loading indicators, and toast notifications. For example, when a booking is successfully created, a confirmation toast is displayed, while validation errors show inline error messages.
+
+In conclusion, the user interface design of the system ensures smooth interaction for all types of users. It enhances the overall functionality of the system by providing a clear, efficient, and user-friendly environment for artist booking, communication, and community engagement.
+
+\setcounter{chapter}{5}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 5}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{DEVELOPMENT METHODOLOGY}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 5 \quad DEVELOPMENT METHODOLOGY}
+\setcounter{section}{0}
+\section{Project Roadmap}
+
+A project roadmap or schedule is a high-level strategic plan that outlines the timeline, phases, milestones, and deliverables of a project. In modern web development, the roadmap is flexible and evolves over time based on feedback, progress, and changing requirements. It acts as a guiding framework that helps the development process remain organized while allowing adaptability.
+
+For the Artify -- Artist Booking and Community Platform, the roadmap was designed to ensure systematic development of features such as user authentication, artist profile management, event creation, geolocation-aware search, two-way booking, encrypted messaging, community feeds, and ratings. The roadmap is divided into multiple phases, each representing a key stage of development.
+
+The first phase is \textbf{Project Initiation and Requirement Analysis}. During this phase, the problem of inefficient artist discovery and booking in Kerala's music industry is identified, and the objectives of the system are defined. User requirements such as role-based access, profile management, booking workflows, encrypted messaging, and community features are gathered. Both functional and non-functional requirements such as security, usability, performance, and scalability are analyzed.
+
+The second phase is \textbf{System Design and Architecture Planning}. In this phase, the system architecture, data flow diagrams (DFD), and database schema are designed. The architecture defines the interaction between the React frontend, Supabase backend, PostgreSQL database, and external APIs such as Nominatim and Web Crypto API. The design ensures modularity, scalability, and security through Row Level Security policies.
+
+The third phase is \textbf{Development and Implementation}, which is carried out in iterative cycles (sprints). Each sprint focuses on developing specific features of the system. For example:
+
+\begin{itemize}
+\item Sprint 1: Project setup, authentication, and role-based routing (login, registration, dashboard)
+\item Sprint 2: Artist profile management with image cropping using React Easy Crop
+\item Sprint 3: Event management and geolocation-aware artist discovery
+\item Sprint 4: Two-way booking system and booking workflow
+\item Sprint 5: AES-GCM encrypted messaging using Web Crypto API
+\item Sprint 6: Community features (posts, feeds, follows, featured artists)
+\item Sprint 7: Ratings and reviews with Bayesian trending scores
+\item Sprint 8: Payment tracking and final integration
+\end{itemize}
+
+Each sprint includes coding, testing, and review to ensure quality and steady progress.
+
+The fourth phase is \textbf{Testing and Quality Assurance}. Testing is performed throughout development to ensure system reliability. Unit testing, integration testing, and system testing are conducted to verify that each module works correctly. Special attention is given to encryption correctness, geolocation accuracy, and real-time updates. Errors and bugs are identified and resolved during this phase.
+
+The fifth phase is \textbf{Deployment and User Feedback}. After development, the system is deployed on a web-accessible platform. Users interact with the system and provide feedback regarding usability, performance, and features. This feedback helps in refining the system.
+
+The final phase is \textbf{Maintenance and Enhancement}. After deployment, the system is continuously monitored and updated. Future enhancements may include integration with real payment gateways, mobile application development, advanced recommendation algorithms, or expansion to other regions.
+
+The roadmap remains flexible and evolves throughout the project lifecycle. The use of iterative development ensures continuous improvement and adaptability, resulting in a secure, efficient, and user-friendly artist booking platform.
+
+\section{User Stories}
+
+User stories are a fundamental component of modern development. They describe system functionality from the perspective of different users, ensuring that development focuses on delivering value. Each user story follows a simple format:
+
+\textit{As a [user], I want [functionality], so that [benefit].}
+
+For the Artify -- Artist Booking and Community Platform, user stories are defined for two main roles: Artists and Managers.
+
+\textbf{Artist Module Stories}
+
+\begin{itemize}
+
+\item As an artist, I want to register and create a detailed profile so that I can showcase my talent to event organizers.
+
+\item As an artist, I want to upload and crop portfolio images so that I can present a professional appearance.
+
+\item As an artist, I want to browse open gigs so that I can find performance opportunities.
+
+\item As an artist, I want to receive booking offers from managers so that I can grow my career.
+
+\item As an artist, I want to communicate securely with managers so that I can negotiate terms privately.
+
+\item As an artist, I want to track my payments so that I can ensure timely compensation.
+
+\item As an artist, I want to receive ratings and reviews so that I can build my reputation.
+
+\item As an artist, I want to engage with the community so that I can network with peers.
+
+\end{itemize}
+
+\textbf{Manager Module Stories}
+
+\begin{itemize}
+
+\item As a manager, I want to create and manage events so that I can organize performances.
+
+\item As a manager, I want to search for artists by location and genre so that I can find suitable performers.
+
+\item As a manager, I want to send booking offers to artists so that I can secure talent for my events.
+
+\item As a manager, I want to communicate securely with artists so that I can discuss event details.
+
+\item As a manager, I want to rate and review artists after events so that I can help others make informed decisions.
+
+\item As a manager, I want to track payments so that I can manage my event budget.
+
+\item As a manager, I want to view community posts so that I can discover trending artists.
+
+\end{itemize}
+
+\textbf{Sprint Planning}
+
+Each user story is divided into smaller development tasks and implemented during sprint cycles. Sprint planning helps organize and prioritize development activities.
+
+During sprint planning, the team:
+
+\begin{itemize}
+\item Reviews the project requirements
+\item Selects user stories based on priority
+\item Estimates time and effort
+\item Breaks stories into smaller tasks
+\item Assigns tasks for development
+\end{itemize}
+
+\textbf{Example Task Breakdown}
+
+For the user story \textit{``Create artist profile''}, tasks include:
+
+\begin{itemize}
+\item Design profile form UI with Tailwind CSS
+\item Implement genre selection with multi-select
+\item Integrate React Easy Crop for image cropping
+\item Connect to Supabase for data storage
+\item Implement validation and error handling
+\item Test profile creation and updates
+\end{itemize}
+
+For the user story \textit{``Send encrypted message''}, tasks include:
+
+\begin{itemize}
+\item Implement AES-GCM encryption using Web Crypto API
+\item Design message input and display UI
+\item Store encrypted content, IV, and auth tag in database
+\item Implement decryption on message retrieval
+\item Test encryption/decryption workflow
+\item Add real-time updates using Supabase Realtime
+\end{itemize}
+
+Each sprint has a clear objective, such as ``Develop booking and payment module'' or ``Implement encrypted messaging and community features.'' At the end of each sprint, features are reviewed and improved based on feedback.
+
+User stories ensure a user-centered design approach, while sprint planning improves coordination and efficiency. Modern development practices help in delivering a secure, reliable, and user-friendly artist booking platform.
+
+\setcounter{chapter}{6}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 6}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{IMPLEMENTATION AND TESTING}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 6 \quad IMPLEMENTATION AND TESTING}
+\setcounter{section}{0}
+\section{Test Plan}
+
+Testing is a critical phase in the software development lifecycle that ensures the system functions correctly, meets user requirements, and is free from defects. In modern development, testing is performed continuously throughout the development process rather than as a separate phase.
+
+For the \textbf{Artify -- Artist Booking and Community Platform}, the test plan is designed to validate all modules including authentication, profile management, event creation, geolocation search, booking workflows, encrypted messaging, community features, ratings, and payment tracking. The goal is to ensure reliability, accuracy, performance, and security of the system.
+
+\textbf{Objectives of Testing}
+
+\begin{itemize}
+\item To verify that all functionalities work as expected
+\item To ensure correct AES-GCM encryption and decryption of messages
+\item To validate geolocation-aware artist discovery using Haversine formula
+\item To ensure secure authentication and authorization through Supabase Auth
+\item To verify correct booking workflow and status updates
+\item To prevent unauthorized access to data through Row Level Security
+\item To detect and fix bugs early in development
+\item To ensure real-time updates work correctly through Supabase Realtime
+\end{itemize}
+
+\textbf{Scope of Testing}
+
+\begin{itemize}
+\item User Authentication (Login, Registration, Password Reset)
+\item Artist Profile Management (Create, Update, Image Cropping)
+\item Event Management (Create, Update, Delete)
+\item Geolocation Search (District Filtering, Haversine Distance)
+\item Booking Module (Two-way Booking, Status Updates)
+\item Encrypted Messaging (AES-GCM Encryption/Decryption)
+\item Community Features (Posts, Feeds, Follows)
+\item Ratings and Reviews (1--5 Rating, Trending Scores)
+\item Payment Tracking (Simulated Payments)
+\end{itemize}
+
+\textbf{Types of Testing}
+
+\textbf{Unit Testing:}
+Unit testing focuses on testing individual components and functions independently. Functions such as Haversine distance calculation, AES-GCM encryption/decryption, Bayesian rating algorithm, and form validation are tested separately.
+
+\vspace{0.3cm}
+
+\textbf{Integration Testing:}
+Integration testing ensures that different modules work together correctly. It verifies data flow between modules such as authentication and profile creation, booking and messaging, events and bookings, and frontend and Supabase backend.
+
+\vspace{0.3cm}
+
+\textbf{System Testing:}
+System testing evaluates the complete system workflow -- from user registration and profile creation to event management, artist discovery, booking, encrypted messaging, and community engagement.
+
+\vspace{0.3cm}
+
+\textbf{User Acceptance Testing (UAT):}
+User Acceptance Testing is conducted by artists and managers to ensure the system meets real-world requirements. Users test features such as profile management, browsing gigs, sending booking requests, encrypted messaging, and community interaction.
+
+\vspace{0.3cm}
+
+\textbf{Performance Testing:}
+Performance testing evaluates system responsiveness, search speed, real-time message delivery, and database query efficiency.
+
+\vspace{0.3cm}
+
+\textbf{Security Testing:}
+Security testing ensures that only authenticated users can access the system, Row Level Security policies prevent unauthorized data access, and AES-GCM encryption correctly secures messages.
+
+\textbf{Testing Environment}
+
+\begin{itemize}
+\item Frontend: React 19, Vite, Tailwind CSS v4
+\item Backend: Supabase (PostgreSQL, Auth, Realtime, Storage)
+\item Geocoding: Nominatim API
+\item Encryption: Web Crypto API (AES-GCM)
+\item Tools: Visual Studio Code, GitHub, ESLint
+\item Browser: Chrome, Firefox, Edge
+\item Operating System: Windows / macOS / Linux
+\end{itemize}
+
+\textbf{Test Cases}
+
+\begin{table}[htbp]
+\setcounter{table}{0}
+\centering
+\caption{Sample Test Cases}
+\renewcommand{\arraystretch}{1.3}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{|c|p{3.5cm}|p{3cm}|p{3.5cm}|c|}
+\hline
+\textbf{Test ID} & \textbf{Description} & \textbf{Input} & \textbf{Expected Output} & \textbf{Status} \\
+\hline
+TC01 & User Registration & Valid email, password, role & Registration successful & Pass \\
+\hline
+TC02 & Artist Profile Creation & Profile details, cropped image & Profile created & Pass \\
+\hline
+TC03 & Event Creation & Event details, budget & Event created & Pass \\
+\hline
+TC04 & Geolocation Search & District, genre filters & Artists listed by distance & Pass \\
+\hline
+TC05 & Send Booking Offer & Event, artist, terms & Booking request sent & Pass \\
+\hline
+TC06 & Encrypted Message & Message text & Encrypted and stored & Pass \\
+\hline
+TC07 & Decrypt Message & Encrypted content & Original message displayed & Pass \\
+\hline
+TC08 & Artist Rating & Rating 1--5, comment & Rating saved & Pass \\
+\hline
+TC09 & Payment Request & Booking, amount & Payment request sent & Pass \\
+\hline
+TC10 & Real-time Update & New message & Message appears instantly & Pass \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Defect Tracking}
+
+All defects identified during testing are recorded and tracked. Each defect includes:
+
+\begin{itemize}
+\item Defect ID
+\item Description
+\item Severity (Low, Medium, High)
+\item Status (Open, In Progress, Closed)
+\end{itemize}
+
+\textbf{Test Execution Strategy}
+
+Testing is performed alongside development. Each sprint includes:
+
+\begin{itemize}
+\item Development of features
+\item Unit testing of modules
+\item Integration testing
+\item Bug fixing and retesting
+\end{itemize}
+
+Continuous testing ensures early detection of issues and improves system quality.
+
+\textbf{Test Schedule}
+
+\begin{itemize}
+\item Sprint 1: Authentication Testing
+\item Sprint 2: Profile Management Testing
+\item Sprint 3: Event and Search Testing
+\item Sprint 4: Booking Module Testing
+\item Sprint 5: Encrypted Messaging Testing
+\item Sprint 6: Community Features Testing
+\item Sprint 7: Ratings and Payment Testing
+\item Sprint 8: Final System Testing
+\end{itemize}
+
+The test plan ensures that the system is reliable, secure, and efficient. Continuous testing and feedback-driven improvements help in delivering a robust and user-friendly artist booking platform.
+
+\section{Implementation Procedures}
+
+The implementation phase of the \textbf{Artify -- Artist Booking and Community Platform} involves converting the system design into a fully functional web-based application integrated with real-time communication, encryption, and geolocation features. This phase combines frontend development, backend integration, database management, and external API usage to create a secure and efficient platform. The development follows an iterative approach, ensuring continuous testing and improvement.
+
+The implementation begins with setting up the development environment. The system is developed using \textbf{React 19} for frontend and \textbf{Supabase} as the Backend-as-a-Service platform. \textbf{Visual Studio Code} is used as the primary development tool for coding, debugging, and project management. The database is implemented using \textbf{PostgreSQL} via Supabase, which stores user details, artist profiles, events, bookings, messages, posts, ratings, and payments.
+
+The frontend of the system is designed to provide a modern and user-friendly interface. Separate dashboards are developed for artists and managers, each with role-specific features. Artists can easily create profiles, browse gigs, manage bookings, and communicate securely. Managers can create events, discover artists, send booking offers, and track payments.
+
+The core application logic is implemented using React components and hooks. When a user registers, Supabase Auth handles secure authentication, and a database trigger automatically creates an artist profile if the user selects the Artist role. The profile management module allows artists to update their details, upload and crop images using React Easy Crop, and manage their portfolio.
+
+The event management module enables managers to create, update, and delete events with complete details. Events are stored in the PostgreSQL database and are visible to artists browsing open gigs.
+
+The geolocation-aware artist discovery module integrates the Nominatim API for converting district names to coordinates. When a manager searches for artists, the Haversine formula in PostgreSQL calculates distances between the event location and artist locations. Results are filtered by district, genre, and rating, ensuring relevant search results.
+
+The two-way booking module implements the complete booking workflow. Managers can send offers to artists, and artists can express interest in gigs. Booking status (pending, accepted, declined) is tracked in the database. Real-time notifications using Supabase Realtime ensure that users receive instant updates on booking requests.
+
+The encrypted messaging module is a critical component of the system. When a user sends a message, the content is encrypted using AES-GCM encryption through the Web Crypto API on the client side. The encrypted content, initialization vector (IV), and auth tag are stored in the messages table. When the recipient retrieves messages, the content is decrypted on the client side. This ensures end-to-end security for all communications.
+
+The community module enables users to create posts with images, hashtags, and location tags. Users can follow other users, and their posts appear in the follower's social feed. A featured artists carousel highlights top-rated performers based on trending scores calculated using a Bayesian rating algorithm.
+
+The ratings and reviews module allows managers to rate artists on a 1--5 scale with written comments after event completion. Ratings are stored in the database and aggregated to calculate trending scores.
+
+The simulated payment module tracks payment status for bookings. Artists can request payments through the platform, and managers can confirm transactions. While the current implementation uses simulated payments, the architecture supports future integration with real payment gateways.
+
+All system data is stored in the PostgreSQL database via Supabase. Row Level Security policies ensure that users can only access data they are authorized to view. Foreign key constraints maintain data integrity across all tables.
+
+Version control is maintained using Git and GitHub, enabling efficient tracking of code changes and collaboration. Each module is developed and tested independently before integration.
+
+The system is implemented in phases, including authentication, profile management, event creation, geolocation search, booking, encrypted messaging, community features, ratings, and payment tracking. Continuous testing is performed to ensure accuracy and reliability. Error handling mechanisms are included to manage invalid inputs, API errors, and network issues.
+
+Performance optimization is considered during implementation to ensure fast search results, efficient encryption/decryption, and smooth real-time updates. The integration of React frontend with Supabase backend ensures efficient system performance.
+
+In conclusion, the implementation of the system successfully integrates modern web technologies, real-time communication, client-side encryption, and geospatial computing to create a secure and community-driven artist booking platform. The use of AES-GCM encryption ensures secure messaging, while the two-way booking system and community features enhance user engagement.
+
+\section{Testing Methods and Results}
+
+Testing is a crucial phase in the development of the \textbf{Artify -- Artist Booking and Community Platform}, ensuring that the system performs accurately, efficiently, and securely under different conditions. In this project, testing is carried out continuously following an iterative approach, allowing early detection of errors and improving overall system reliability.
+
+The testing process begins with \textbf{unit testing}, where individual components and functions are tested independently. Each module, including user authentication, profile management, event creation, geolocation search, booking workflow, AES-GCM encryption, community features, and ratings, is verified separately. For example, the encryption module is tested to ensure correct AES-GCM encryption and decryption, while the Haversine distance function is tested to accurately calculate distances between coordinates. Unit testing ensures that each module functions correctly before integration.
+
+Following unit testing, \textbf{integration testing} is performed to ensure that all modules interact properly. This phase verifies the communication between components such as authentication and profile creation, booking and messaging, events and bookings, and frontend and Supabase backend. For instance, when a user registers with the Artist role, the system checks whether the database trigger correctly creates an entry in the artist\_profiles table. Integration testing ensures smooth data flow and coordination among system components.
+
+\textbf{System testing} is conducted to evaluate the complete system as a whole. This includes validating the entire workflow -- from user registration and profile creation to event management, artist discovery, booking, encrypted messaging, and community engagement. The system is tested in real-world scenarios to ensure that all functionalities work together seamlessly.
+
+\textbf{User Acceptance Testing (UAT)} is carried out to validate the system from the end-user perspective. Different users such as artists and managers interact with the system to evaluate its usability and functionality. Users test features such as profile management, browsing gigs, sending booking requests, encrypted messaging, creating posts, and rating artists. Feedback from this phase helps improve system usability and performance.
+
+\textbf{Performance testing} is performed to evaluate system responsiveness and efficiency. The system is tested under conditions such as multiple concurrent users, simultaneous booking requests, and continuous real-time message updates. The results indicate that the system performs efficiently with minimal delay in search results, message delivery, and database operations.
+
+\textbf{Security testing} ensures that the system prevents unauthorized access. The authentication mechanism is tested to confirm that only registered users can access the system, and Row Level Security policies prevent unauthorized data access. The AES-GCM encryption is tested to ensure that messages are correctly encrypted before storage and decrypted on retrieval. The system successfully restricts unauthorized access, enhancing overall security.
+
+Test cases are designed to systematically validate system functionalities. Each test case includes details such as test ID, description, input, expected output, and result. These test cases ensure that all modules perform as expected under different scenarios.
+
+The results obtained from testing demonstrate that the system operates effectively across all modules. The authentication module securely manages user access, the profile management module accurately handles artist profiles with image cropping, and the geolocation search module correctly filters artists by distance and genre. The booking module successfully manages two-way booking workflows, and the encrypted messaging module ensures secure communication. The community module enables smooth social interaction, and the ratings module correctly calculates trending scores.
+
+During testing, minor issues such as slight delays in geocoding API responses and edge cases in image cropping were identified. These issues were resolved through iterative testing and optimization, improving system accuracy and performance.
+
+Regression testing is also conducted to ensure that newly added features do not affect existing functionalities. Previously tested modules are re-evaluated after updates to maintain system stability and consistency.
+
+Overall, the testing process confirms that the system is reliable, secure, and efficient. The integration of AES-GCM encryption with real-time messaging provides secure communication, reduces manual effort, and enhances user trust.
+
+In conclusion, the applied testing methods ensure that the system is robust and ready for real-world use. The results demonstrate that the system effectively improves artist booking by providing secure communication, efficient discovery, and community engagement, contributing to a more organized and transparent music ecosystem.
+
+\setcounter{chapter}{7}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 7}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{CONCLUSION}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 7 \quad CONCLUSION}
+\setcounter{section}{0}
+
+\section{Summary}
+
+The \textbf{Artify -- Artist Booking and Community Platform} was developed as an intelligent web-based system aimed at improving artist discovery, streamlining booking processes, and fostering community engagement in the Kerala music ecosystem. The system integrates modern frontend technologies with a robust Backend-as-a-Service platform to provide a secure and efficient artist booking solution. The primary objective of the project is to connect independent artists with event organizers through a unified digital platform while ensuring secure communication and transparent transactions.
+
+The development of the system followed an iterative approach, ensuring continuous improvement through testing and refinement. The application was built using \textbf{React 19} for frontend development with \textbf{Vite} as the build tool and \textbf{Tailwind CSS v4} for styling, providing a responsive and user-friendly interface. The system utilizes \textbf{Supabase} as the backend platform, leveraging \textbf{PostgreSQL} for database management to store user details, artist profiles, events, bookings, messages, posts, ratings, and payments.
+
+One of the key features of the system is the two-way booking mechanism. Unlike traditional platforms where only managers can initiate contact, Artify enables both artists and managers to propose bookings. This bidirectional approach increases engagement and provides flexibility for both parties.
+
+The geolocation-aware artist discovery module is another important component of the system. It integrates the Nominatim Geocoding API for coordinate lookup and implements the Haversine formula in PostgreSQL for proximity-based calculations. This enables managers to search for artists based on location, district, genre, and ratings, ensuring relevant search results.
+
+A major strength of the system is the \textbf{AES-GCM encrypted messaging} implemented through the Web Crypto API. All messages are encrypted on the client side before being stored in the database, ensuring end-to-end security for communications between artists and managers. This protects sensitive information such as booking details, negotiation terms, and payment confirmations.
+
+The system also includes a community engagement module where users can create posts with images and hashtags, follow other users, and interact with a social feed. A featured artists carousel highlights top-rated performers, and a trending score algorithm based on Bayesian rating principles ensures fair visibility for both established and emerging artists.
+
+The artist ratings and reviews module allows managers to rate artists on a 1--5 scale with written comments after event completion. These ratings are aggregated and displayed on artist profiles, providing transparency and accountability within the platform.
+
+Extensive testing was conducted to ensure system reliability, accuracy, and security. Various testing methods such as unit testing, integration testing, system testing, and user acceptance testing were performed. The results indicate that the system performs efficiently, with correct encryption/decryption, accurate geolocation calculations, secure authentication, and smooth real-time updates.
+
+Overall, the system successfully achieves its objective of providing a smart, secure, and community-driven platform for artist booking and management. The integration of modern web technologies with client-side encryption and geospatial computing enhances security, reduces manual effort, and improves user experience. The project demonstrates how full-stack engineering, real-time communication, and modern development practices can be effectively applied to develop intelligent systems that address real-world challenges in the creative industry.
+
+\section{Limitations}
+
+Despite the successful implementation of the \textbf{Artify -- Artist Booking and Community Platform}, certain limitations exist that may affect the system's performance and efficiency in real-world scenarios. These limitations are mainly related to external dependencies, regional constraints, and feature scope. Identifying these limitations helps in understanding the current scope of the system and provides direction for future improvements.
+
+\textbf{Geocoding API Rate Limits:}
+The system relies on the Nominatim Geocoding API for converting district names to coordinates. Nominatim has usage policies and rate limits that may restrict the number of requests per minute. Heavy usage may require implementing caching mechanisms or switching to a paid geocoding service.
+
+\vspace{0.3cm}
+
+\textbf{Regional Limitation:}
+The current implementation is specifically designed for Kerala's 14 districts. While the architecture is extensible, the system does not yet support nationwide or international deployment. Expanding to other regions would require updating district data and geocoding configurations.
+
+\vspace{0.3cm}
+
+\textbf{Simulated Payment System:}
+The payment module uses simulated payments and does not integrate with real payment gateways such as Razorpay, Stripe, or PayPal. This limits the system's ability to process actual financial transactions, requiring manual payment handling outside the platform.
+
+\vspace{0.3cm}
+
+\textbf{Browser Dependency for Encryption:}
+The AES-GCM encryption relies on the Web Crypto API, which is supported by all modern browsers but may not work correctly on older browsers. Users with outdated browsers may experience issues with encrypted messaging.
+
+\vspace{0.3cm}
+
+\textbf{Limited to Music and Performing Arts:}
+The system is currently focused on musicians and performing artists. While the modular architecture allows for expansion, the current implementation does not extend to other creative fields such as visual arts, photography, or dance.
+
+\vspace{0.3cm}
+
+\textbf{Dependence on Internet Connectivity:}
+The system requires a stable internet connection for accessing Supabase services, geocoding APIs, and real-time updates. In case of network issues, system performance may be affected, leading to delays in search results or message delivery.
+
+\vspace{0.3cm}
+
+\textbf{Image Storage Limits:}
+Supabase Storage has limits on file size and storage capacity in the free tier. Artists uploading high-resolution portfolio images may encounter storage constraints, requiring optimization or upgrade to paid plans.
+
+\vspace{0.3cm}
+
+\textbf{Limited Automation Scope:}
+The system currently focuses on booking and community features and does not include advanced features such as automated contract generation, invoice generation, or tax calculations.
+
+\vspace{0.3cm}
+
+\textbf{Scalability Constraints:}
+While the system is designed to be scalable, the free tier of Supabase has limitations on database size, bandwidth, and concurrent connections. Large-scale deployment with thousands of users may require upgrading to paid plans or implementing additional optimization strategies.
+
+\vspace{0.5cm}
+
+In conclusion, the identified limitations highlight areas for improvement in terms of scalability, payment integration, and regional expansion. Addressing these limitations in future enhancements will improve system reliability and make it more suitable for large-scale real-world deployment.
+
+\section{Future Scope}
+
+The \textbf{Artify -- Artist Booking and Community Platform} has significant potential for further enhancement and expansion. By integrating advanced technologies and addressing current limitations, the system can be improved to provide a more efficient, secure, and scalable platform for the creative industry. The future scope focuses on enhancing functionality, security, and user experience.
+
+\textbf{Real Payment Gateway Integration:}
+Future enhancements can include integration with payment gateways such as Razorpay, Stripe, or PayPal for processing actual financial transactions. This would enable seamless and secure payments within the platform, eliminating the need for manual payment handling.
+
+\vspace{0.3cm}
+
+\textbf{Mobile Application Development:}
+A dedicated mobile application can be developed using React Native or Flutter to provide a native mobile experience. This would enhance accessibility for users who prefer mobile devices over web browsers.
+
+\vspace{0.3cm}
+
+\textbf{Advanced Recommendation System:}
+Machine learning algorithms can be implemented to provide personalized artist recommendations based on manager preferences, past bookings, and user behavior. This would improve discovery and increase booking conversions.
+
+\vspace{0.3cm}
+
+\textbf{Nationwide and International Expansion:}
+The system can be extended to support additional regions beyond Kerala. This would require updating district data, integrating multi-language support, and configuring geocoding for different countries.
+
+\vspace{0.3cm}
+
+\textbf{Automated Contract Generation:}
+Future versions can include automated contract generation based on booking terms. Digital signatures can be integrated for legally binding agreements between artists and managers.
+
+\vspace{0.3cm}
+
+\textbf{Advanced Analytics Dashboard:}
+An analytics dashboard can be developed to provide insights into booking trends, earnings, popular genres, and user engagement. This would help artists and managers make data-driven decisions.
+
+\vspace{0.3cm}
+
+\textbf{Enhanced Security Features:}
+Additional security measures such as two-factor authentication (2FA), end-to-end encrypted file uploads, and audit logs can be implemented to further enhance system security.
+
+\vspace{0.3cm}
+
+\textbf{Integration with Other Creative Fields:}
+The system can be expanded to include other creative professionals such as photographers, visual artists, dancers, and event planners. This would transform Artify into a comprehensive creative industry platform.
+
+\vspace{0.3cm}
+
+\textbf{Offline Mode:}
+Progressive Web App (PWA) features can be implemented to enable offline functionality for certain features such as viewing messages, profiles, and bookings. This would improve usability in areas with poor internet connectivity.
+
+\vspace{0.3cm}
+
+\textbf{Integration with Smart City Infrastructure:}
+The system can be integrated with event management platforms and smart city initiatives to support cultural event planning, tourism promotion, and artist visibility at a regional or national level.
+
+\vspace{0.5cm}
+
+In conclusion, the future scope of the system is extensive. With continuous development and the integration of advanced technologies, Artify can evolve into a fully automated and intelligent platform for the creative industry. These improvements will enhance efficiency, security, and scalability, contributing to a more transparent and organized ecosystem for artists and event organizers.
+
+%============================================================
+
+% ===================== APPENDIX =====================
+\clearpage
+
+% ---- Chapter as Appendix ----
+\setcounter{chapter}{8}
+\setcounter{section}{0}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 8}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{APPENDIX}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 8 \quad APPENDIX}
+
+% Apply header & footer style
+\pagestyle{maincontent}
+
+\section{Sample Code / Queries}
+
+\noindent \textbf{GitHub Repository:} \\
+
+\url{https://github.com/ArathiBalachandran/DUAL-FACTOR-SMART-PARKING-}
+
+\vspace{0.7cm}
+
+\textbf{Supabase Configuration (lib/supabase.js):}
+\lstinputlisting[language=JavaScript, caption=Supabase Client Configuration]{lib/supabase.js}
+
+\vspace{0.5cm}
+
+\textbf{Encryption Service (lib/encryption.js):}
+\lstinputlisting[language=JavaScript, caption=AES-GCM Encryption Service]{lib/encryption.js}
+
+\vspace{0.5cm}
+
+\textbf{Haversine Distance Function (database.sql):}
+\lstinputlisting[language=SQL, caption=Haversine Distance Calculation]{database.sql}
+
+\vspace{0.5cm}
+
+\textbf{Artist Profile Component (components/ArtistProfile.jsx):}
+\lstinputlisting[language=JavaScript, caption=Artist Profile Management]{components/ArtistProfile.jsx}
+
+\vspace{0.5cm}
+
+\setcounter{figure}{0}
+\renewcommand{\thefigure}{8.\arabic{figure}}
+\vspace{0.5cm}
+\section{User Interface Screenshots - Artify -- Artist Booking and Community Platform}
+
+The user interface of the Artify -- Artist Booking and Community Platform is designed to provide a seamless and intuitive experience.
+The following screenshots illustrate the different components of the system.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d1.png}
+\caption{Home Page}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d2.png}
+\caption{User Login}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d3.png}
+\caption{User Registration}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d4.png}
+\caption{Artist Dashboard}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d5.png}
+\caption{Manager Dashboard}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d6.png}
+\caption{Artist Profile Management}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d7.png}
+\caption{Event Creation Page}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d8.png}
+\caption{Artist Discovery with Geolocation Search}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d9.png}
+\caption{Booking Request Page}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d10.png}
+\caption{Encrypted Messaging Interface}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d11.png}
+\caption{Community Feed}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d12.png}
+\caption{Featured Artists Carousel}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d13.png}
+\caption{Artist Ratings and Reviews}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{d14.png}
+\caption{Payment Tracking Page}
+\end{figure}
+
+%================== CHAPTER 9 : REFERENCES ==================
+
+\setcounter{chapter}{9}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 9}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{REFERENCES}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 9 \quad REFERENCES}
+
+\setcounter{section}{0}
+
+\begin{thebibliography}{10}
+
+\bibitem{ref1}
+React Team, ``React 19 Documentation,'' 2025.
+[Online]. Available: https://react.dev/
+
+\bibitem{ref2}
+Vite Team, ``Vite Build Tool Documentation,'' 2025.
+[Online]. Available: https://vite.dev/
+
+\bibitem{ref3}
+Tailwind Labs, ``Tailwind CSS v4 Documentation,'' 2025.
+[Online]. Available: https://tailwindcss.com/
+
+\bibitem{ref4}
+Supabase, ``Supabase Documentation,'' 2025.
+[Online]. Available: https://supabase.com/docs
+
+\bibitem{ref5}
+PostgreSQL Global Development Group, ``PostgreSQL Documentation,'' 2025.
+[Online]. Available: https://www.postgresql.org/docs/
+
+\bibitem{ref6}
+OpenStreetMap, ``Nominatim Geocoding API Documentation,'' 2025.
+[Online]. Available: https://nominatim.org/
+
+\bibitem{ref7}
+W3C, ``Web Crypto API Specification,'' 2025.
+[Online]. Available: https://www.w3.org/TR/WebCryptoAPI/
+
+\bibitem{ref8}
+React Router Team, ``React Router DOM v7 Documentation,'' 2025.
+[Online]. Available: https://reactrouter.com/
+
+\bibitem{ref9}
+Lucide Labs, ``Lucide React Icons Documentation,'' 2025.
+[Online]. Available: https://lucide.dev/
+
+\bibitem{ref10}
+GitHub, ``Version Control and Collaboration Platform,'' 2025.
+[Online]. Available: https://github.com/
+
+\bibitem{ref11}
+ESLint, ``ESLint Documentation,'' 2025.
+[Online]. Available: https://eslint.org/
+
+\bibitem{ref12}
+R. S. Pressman and B. R. Maxim, \textit{Software Engineering: A Practitioner's Approach}, 8th ed.
+New York, NY, USA: McGraw-Hill, 2015.
+
+\bibitem{ref13}
+I. Sommerville, \textit{Software Engineering}, 10th ed.
+Boston, MA, USA: Pearson, 2016.
+
+\end{thebibliography}
+
+\end{document}
