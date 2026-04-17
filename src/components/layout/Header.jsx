@@ -221,7 +221,7 @@ const Header = ({ user, role, onLogout }) => {
   const metadataUsername = user?.user_metadata?.username;
   const userRole = role === 'artist' ? 'Artist' : 'Organizer';
   const resolvedAvatar = profile?.avatar_url || (profile?.role === 'artist' ? profile?.portfolio_images?.[0] : null);
-  const userImage = withCacheBuster(resolvedAvatar, profile?.updated_at) || "https://i.pravatar.cc/150?img=60";
+  const userImage = withCacheBuster(resolvedAvatar, profile?.updated_at) || `https://i.pravatar.cc/150?u=${user?.id || 'artify'}`;
   const usernameToUse = (profile?.username || metadataUsername || '').toLowerCase().trim();
   const isValidUsername = /^[a-z0-9_]{3,}$/.test(usernameToUse);
   const profilePath = isValidUsername ? `/${usernameToUse}` : '/profile';

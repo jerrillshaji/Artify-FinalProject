@@ -17,9 +17,9 @@ Note: This will impact Vite dev & build performances.
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-## Seed 15 Dummy Users
+## Seed 30 Dummy Users
 
-This project includes a script that creates 15 dummy auth users and fills profile/app data (avatar, background, bio, location, role, artist/manager details, posts, and follows).
+This project includes a script that creates 30 dummy auth users and fills profile/app data (avatar, background, bio, location, role, artist/manager details, posts, and follows).
 
 ### 1) Add service role key to `.env`
 
@@ -52,3 +52,4 @@ If users already exist and you only want to refresh profile/post dummy data, run
 - `database/s12_seed_15_dummy_data.sql`
 
 This SQL does not create auth users/passwords. It updates app tables for seeded emails.
+

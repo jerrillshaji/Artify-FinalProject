@@ -8,6 +8,8 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
 const DEFAULT_PASSWORD = 'ArtifyDemo@123';
+const SEED_POST_TAG = '[SEED30]';
+const CREDENTIALS_OUTPUT_FILE = 'seed_15_users_credentials.csv';
 
 const DUMMY_USERS = [
   {
@@ -33,7 +35,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'Just finished soundcheck for tonight. Bringing stripped-back versions of my new songs. [SEED15]'
+    post: 'Just finished soundcheck for tonight. Bringing stripped-back versions of my new songs. [SEED30]'
   },
   {
     email: 'zane.rivera@artify.dev',
@@ -58,7 +60,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'Booked for a rooftop sunset set this weekend. Groove mode on. [SEED15]'
+    post: 'Booked for a rooftop sunset set this weekend. Groove mode on. [SEED30]'
   },
   {
     email: 'lara.kim@artify.dev',
@@ -83,7 +85,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1521334884684-d80222895322?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'Dropped fresh vocal stems for a collab. Can not wait to play this live. [SEED15]'
+    post: 'Dropped fresh vocal stems for a collab. Can not wait to play this live. [SEED30]'
   },
   {
     email: 'noah.velasco@artify.dev',
@@ -108,7 +110,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'New pocket, tighter fills, same energy. See you at the next gig. [SEED15]'
+    post: 'New pocket, tighter fills, same energy. See you at the next gig. [SEED30]'
   },
   {
     email: 'ava.morgan@artify.dev',
@@ -133,7 +135,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'Tonight is all jazz standards and candlelight vibes. [SEED15]'
+    post: 'Tonight is all jazz standards and candlelight vibes. [SEED30]'
   },
   {
     email: 'jin.park@artify.dev',
@@ -158,7 +160,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1501612780327-45045538702b?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'Cooked up a new 90 BPM set for an underground showcase. [SEED15]'
+    post: 'Cooked up a new 90 BPM set for an underground showcase. [SEED30]'
   },
   {
     email: 'sara.delacruz@artify.dev',
@@ -183,7 +185,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1526478806334-5fd488fcaabc?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'String quartet arrangements done for a weekend wedding run. [SEED15]'
+    post: 'String quartet arrangements done for a weekend wedding run. [SEED30]'
   },
   {
     email: 'kai.ortega@artify.dev',
@@ -208,7 +210,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'Rehearsed full choreography set for the city fiesta stage. [SEED15]'
+    post: 'Rehearsed full choreography set for the city fiesta stage. [SEED30]'
   },
   {
     email: 'nina.reyes@artify.dev',
@@ -233,7 +235,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'Writing camp day 2 and my voice is still surviving. [SEED15]'
+    post: 'Writing camp day 2 and my voice is still surviving. [SEED30]'
   },
   {
     email: 'leo.tan@artify.dev',
@@ -258,7 +260,7 @@ const DUMMY_USERS = [
       portfolio_images: ['https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=80'],
       videos: []
     },
-    post: 'Weekend mix uploaded. Testing a deeper house run for Friday. [SEED15]'
+    post: 'Weekend mix uploaded. Testing a deeper house run for Friday. [SEED30]'
   },
   {
     email: 'aurora.events@artify.dev',
@@ -278,7 +280,7 @@ const DUMMY_USERS = [
       total_events: 140,
       upcoming_events: 12
     },
-    post: 'Looking for acoustic duos for a sunset wedding series this quarter. [SEED15]'
+    post: 'Looking for acoustic duos for a sunset wedding series this quarter. [SEED30]'
   },
   {
     email: 'pulse.productions@artify.dev',
@@ -298,7 +300,7 @@ const DUMMY_USERS = [
       total_events: 210,
       upcoming_events: 18
     },
-    post: 'Open call for high-energy acts for a regional campus tour. [SEED15]'
+    post: 'Open call for high-energy acts for a regional campus tour. [SEED30]'
   },
   {
     email: 'northstar.bookings@artify.dev',
@@ -318,7 +320,7 @@ const DUMMY_USERS = [
       total_events: 95,
       upcoming_events: 9
     },
-    post: 'Seeking violin and piano duos for premium hotel residencies. [SEED15]'
+    post: 'Seeking violin and piano duos for premium hotel residencies. [SEED30]'
   },
   {
     email: 'citylights.agency@artify.dev',
@@ -338,7 +340,7 @@ const DUMMY_USERS = [
       total_events: 122,
       upcoming_events: 11
     },
-    post: 'Need a DJ and MC duo for a mall launch weekend campaign. [SEED15]'
+    post: 'Need a DJ and MC duo for a mall launch weekend campaign. [SEED30]'
   },
   {
     email: 'halo.creative@artify.dev',
@@ -358,7 +360,332 @@ const DUMMY_USERS = [
       total_events: 77,
       upcoming_events: 7
     },
-    post: 'Booking soulful live acts for a livestream mini-series. [SEED15]'
+    post: 'Booking soulful live acts for a livestream mini-series. [SEED30]'
+  },
+  {
+    email: 'ivy.mendes@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'devikapradeep',
+    full_name: 'Devika Pradeep',
+    role: 'artist',
+    bio: 'Contemporary vocalist blending indie hooks with Malayalam folk textures.',
+    location: 'Pathanamthitta, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/women/12.jpg',
+    background_url: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://devikapradeep.example.com',
+    social_links: { instagram: 'https://instagram.com/devikapradeep.music' },
+    artist: {
+      stage_name: 'Devika P',
+      genres: ['indie', 'carnatic'],
+      price_range: 'mid',
+      base_price: 23000,
+      rating: 4.7,
+      total_gigs: 46,
+      tags: ['live vocal', 'folk fusion', 'originals'],
+      portfolio_images: ['https://images.unsplash.com/photo-1516280030429-27679b3dc9cf?auto=format&fit=crop&w=1200&q=80'],
+      videos: []
+    },
+    post: 'Finalized a new folk-fusion setlist for this month. [SEED30]'
+  },
+  {
+    email: 'omar.hale@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'anandmohan',
+    full_name: 'Anand Mohan',
+    role: 'artist',
+    bio: 'Fingerstyle guitarist and loop station performer for intimate and cafe gigs.',
+    location: 'Idukki, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/men/19.jpg',
+    background_url: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://anandmohan.example.com',
+    social_links: { instagram: 'https://instagram.com/anandmohan.strings' },
+    artist: {
+      stage_name: 'Anand Strings',
+      genres: ['indie', 'rock'],
+      price_range: 'mid',
+      base_price: 21000,
+      rating: 4.6,
+      total_gigs: 39,
+      tags: ['guitar', 'solo act', 'loop station'],
+      portfolio_images: ['https://images.unsplash.com/photo-1519996521438-2ea2b5f7e8db?auto=format&fit=crop&w=1200&q=80'],
+      videos: []
+    },
+    post: 'Testing a new fingerstyle medley for weekend cafe circuits. [SEED30]'
+  },
+  {
+    email: 'priya.gupta@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'poojanair',
+    full_name: 'Pooja Nair',
+    role: 'artist',
+    bio: 'Playback-trained vocalist with a cinematic-pop live performance style.',
+    location: 'Kasaragod, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/women/15.jpg',
+    background_url: 'https://images.unsplash.com/photo-1460723237483-7a6dc9d0b212?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://poojanair.example.com',
+    social_links: { instagram: 'https://instagram.com/poojanair.vox' },
+    artist: {
+      stage_name: 'Pooja N',
+      genres: ['pop', 'hindustani'],
+      price_range: 'high',
+      base_price: 29000,
+      rating: 4.8,
+      total_gigs: 68,
+      tags: ['playback style', 'cinematic', 'weddings'],
+      portfolio_images: ['https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=80'],
+      videos: []
+    },
+    post: 'Wrapped rehearsals for a cinematic unplugged showcase. [SEED30]'
+  },
+  {
+    email: 'ethan.cross@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'roshanmathew',
+    full_name: 'Roshan Mathew',
+    role: 'artist',
+    bio: 'Percussion and handpan artist for ambient and meditative live experiences.',
+    location: 'Wayanad, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/men/27.jpg',
+    background_url: 'https://images.unsplash.com/photo-1461784121038-f088ca1e7714?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://roshanmathew.example.com',
+    social_links: { instagram: 'https://instagram.com/roshan.handpan' },
+    artist: {
+      stage_name: 'Roshan Rhythm',
+      genres: ['indie', 'dj'],
+      price_range: 'mid',
+      base_price: 22000,
+      rating: 4.5,
+      total_gigs: 29,
+      tags: ['handpan', 'ambient', 'percussion'],
+      portfolio_images: ['https://images.unsplash.com/photo-1461783436728-0a9217714694?auto=format&fit=crop&w=1200&q=80'],
+      videos: []
+    },
+    post: 'Ambient handpan + percussion set ready for the retreat circuit. [SEED30]'
+  },
+  {
+    email: 'sofia.lane@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'anjalijoseph',
+    full_name: 'Anjali Joseph',
+    role: 'artist',
+    bio: 'Indie songwriter and keyboardist focused on storytelling-driven sets.',
+    location: 'Kasaragod, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/women/26.jpg',
+    background_url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://anjalijoseph.example.com',
+    social_links: { instagram: 'https://instagram.com/anjalijoseph.music' },
+    artist: {
+      stage_name: 'Anjali J',
+      genres: ['indie', 'pop'],
+      price_range: 'mid',
+      base_price: 20500,
+      rating: 4.6,
+      total_gigs: 34,
+      tags: ['keys', 'songwriter', 'acoustic pop'],
+      portfolio_images: ['https://images.unsplash.com/photo-1517232115160-ff93364542dd?auto=format&fit=crop&w=1200&q=80'],
+      videos: []
+    },
+    post: 'Sharing two unreleased originals at this Friday listening room. [SEED30]'
+  },
+  {
+    email: 'beacon.live@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'beaconlive',
+    full_name: 'Beacon Live',
+    role: 'manager',
+    bio: 'Corporate events specialist curating polished live entertainment experiences.',
+    location: 'Kochi, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/men/40.jpg',
+    background_url: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://beaconlive.example.com',
+    social_links: { website: 'https://beaconlive.example.com' },
+    manager: {
+      company_name: 'Beacon Live',
+      company_type: 'Corporate Events',
+      total_events: 133,
+      upcoming_events: 13
+    },
+    post: 'Hiring versatile live acts for a pan-Kerala annual summit series. [SEED30]'
+  },
+  {
+    email: 'rhythm.bridge@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'rhythmbridge',
+    full_name: 'Rhythm Bridge',
+    role: 'manager',
+    bio: 'Mid-scale event producer focused on cultural festivals and curated lineups.',
+    location: 'Thrissur, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/women/41.jpg',
+    background_url: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://rhythmbridge.example.com',
+    social_links: { website: 'https://rhythmbridge.example.com' },
+    manager: {
+      company_name: 'Rhythm Bridge',
+      company_type: 'Festival Production',
+      total_events: 111,
+      upcoming_events: 10
+    },
+    post: 'Open to folk-pop and indie acts for temple arts festival season. [SEED30]'
+  },
+  {
+    email: 'bluewave.bookings@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'bluewavebookings',
+    full_name: 'Bluewave Bookings',
+    role: 'manager',
+    bio: 'Venue and talent booking agency handling hospitality and nightlife clients.',
+    location: 'Ernakulam, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/men/55.jpg',
+    background_url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://bluewavebookings.example.com',
+    social_links: { website: 'https://bluewavebookings.example.com' },
+    manager: {
+      company_name: 'Bluewave Bookings',
+      company_type: 'Venue Bookings',
+      total_events: 168,
+      upcoming_events: 15
+    },
+    post: 'Need weekend DJ lineups for a premium lounge partner network. [SEED30]'
+  },
+  {
+    email: 'moonlit.stages@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'moonlitstages',
+    full_name: 'Moonlit Stages',
+    role: 'manager',
+    bio: 'Boutique wedding and reception production house with premium artist curation.',
+    location: 'Kottayam, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/women/59.jpg',
+    background_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://moonlitstages.example.com',
+    social_links: { website: 'https://moonlitstages.example.com' },
+    manager: {
+      company_name: 'Moonlit Stages',
+      company_type: 'Wedding Production',
+      total_events: 84,
+      upcoming_events: 8
+    },
+    post: 'Looking for violin-piano duos for destination wedding weekends. [SEED30]'
+  },
+  {
+    email: 'echo.events@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'echoevents',
+    full_name: 'Echo Events',
+    role: 'manager',
+    bio: 'Campus and youth event agency creating high-energy music experiences.',
+    location: 'Kannur, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/men/66.jpg',
+    background_url: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://echoevents.example.com',
+    social_links: { website: 'https://echoevents.example.com' },
+    manager: {
+      company_name: 'Echo Events',
+      company_type: 'Campus Events',
+      total_events: 126,
+      upcoming_events: 14
+    },
+    post: 'Accepting artist applications for college fest headline slots. [SEED30]'
+  },
+  {
+    email: 'ember.collective@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'embercollective',
+    full_name: 'Ember Collective',
+    role: 'manager',
+    bio: 'Independent collective producing intimate listening-room and cafe shows.',
+    location: 'Alappuzha, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/women/70.jpg',
+    background_url: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://embercollective.example.com',
+    social_links: { website: 'https://embercollective.example.com' },
+    manager: {
+      company_name: 'Ember Collective',
+      company_type: 'Independent Promoters',
+      total_events: 72,
+      upcoming_events: 6
+    },
+    post: 'Curating soft indie-acoustic nights for waterfront cafe venues. [SEED30]'
+  },
+  {
+    email: 'stagecraft.media@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'stagecraftmedia',
+    full_name: 'Stagecraft Media',
+    role: 'manager',
+    bio: 'Live content and event production team for branded artist showcases.',
+    location: 'Thiruvananthapuram, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/men/71.jpg',
+    background_url: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://stagecraftmedia.example.com',
+    social_links: { website: 'https://stagecraftmedia.example.com' },
+    manager: {
+      company_name: 'Stagecraft Media',
+      company_type: 'Branded Productions',
+      total_events: 158,
+      upcoming_events: 16
+    },
+    post: 'Seeking charismatic live performers for a branded digital series. [SEED30]'
+  },
+  {
+    email: 'horizon.talent@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'horizontalent',
+    full_name: 'Horizon Talent',
+    role: 'manager',
+    bio: 'Talent and programming agency connecting artists with premium venues.',
+    location: 'Kozhikode, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/women/74.jpg',
+    background_url: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://horizontalent.example.com',
+    social_links: { website: 'https://horizontalent.example.com' },
+    manager: {
+      company_name: 'Horizon Talent',
+      company_type: 'Talent Agency',
+      total_events: 143,
+      upcoming_events: 12
+    },
+    post: 'Onboarding new artists for premium weekend venue circuits. [SEED30]'
+  },
+  {
+    email: 'nexa.bookings@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'nexabookings',
+    full_name: 'Nexa Bookings',
+    role: 'manager',
+    bio: 'Fast-moving bookings desk for clubs, lounges, and city showcase nights.',
+    location: 'Palakkad, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/men/77.jpg',
+    background_url: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://nexabookings.example.com',
+    social_links: { website: 'https://nexabookings.example.com' },
+    manager: {
+      company_name: 'Nexa Bookings',
+      company_type: 'Club Bookings',
+      total_events: 187,
+      upcoming_events: 17
+    },
+    post: 'Looking for crowd-focused DJs for Friday and Saturday residencies. [SEED30]'
+  },
+  {
+    email: 'urban.melody@artify.dev',
+    password: DEFAULT_PASSWORD,
+    username: 'urbanmelody',
+    full_name: 'Urban Melody',
+    role: 'manager',
+    bio: 'City event curators building artist-first music experiences for new audiences.',
+    location: 'Kollam, Kerala',
+    avatar_url: 'https://randomuser.me/api/portraits/women/80.jpg',
+    background_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1600&q=80',
+    website: 'https://urbanmelody.example.com',
+    social_links: { website: 'https://urbanmelody.example.com' },
+    manager: {
+      company_name: 'Urban Melody',
+      company_type: 'City Music Curators',
+      total_events: 98,
+      upcoming_events: 9
+    },
+    post: 'Applications open for our next citywide indie showcase. [SEED30]'
   }
 ];
 
@@ -380,7 +707,23 @@ const FOLLOW_RELATIONS = [
   ['thaalamproductions', 'lakshmikrishnan'],
   ['dhruvabookings', 'saranyadas'],
   ['nagarajyothiagency', 'lijothomas'],
-  ['alocreativestudio', 'nithyarajesh']
+  ['alocreativestudio', 'nithyarajesh'],
+  ['devikapradeep', 'beaconlive'],
+  ['devikapradeep', 'rhythmbridge'],
+  ['anandmohan', 'bluewavebookings'],
+  ['poojanair', 'moonlitstages'],
+  ['roshanmathew', 'echoevents'],
+  ['anjalijoseph', 'embercollective'],
+  ['beaconlive', 'meeranair'],
+  ['rhythmbridge', 'saranyadas'],
+  ['bluewavebookings', 'lijothomas'],
+  ['moonlitstages', 'ashapillai'],
+  ['echoevents', 'jibinrajan'],
+  ['embercollective', 'anjalijoseph'],
+  ['stagecraftmedia', 'devikapradeep'],
+  ['horizontalent', 'poojanair'],
+  ['nexabookings', 'roshanmathew'],
+  ['urbanmelody', 'anandmohan']
 ];
 
 function loadEnvFromDotEnv() {
@@ -501,12 +844,12 @@ async function main() {
     .from('posts')
     .delete()
     .in('author_id', seedUserIds)
-    .like('content', '%[SEED15]%');
+    .like('content', '%[SEED%');
   if (deleteSeedPostsError) throw deleteSeedPostsError;
 
   const postRows = DUMMY_USERS.map((item, index) => ({
     author_id: idByUsername.get(item.username),
-    content: item.post,
+    content: item.post.replace(/\[SEED\d+\]/g, SEED_POST_TAG),
     location: item.location,
     image_url: item.artist?.portfolio_images?.[0] || item.background_url,
     tags: item.role === 'artist' ? ['seed', 'artist', `u${index + 1}`] : ['seed', 'manager', `u${index + 1}`],
@@ -537,10 +880,10 @@ async function main() {
     ...authSummaries.map((item) => `${item.email},${item.password},${item.role},${item.username},${item.id}`),
   ];
 
-  const outputPath = path.join(projectRoot, 'database', 'seed_15_users_credentials.csv');
+  const outputPath = path.join(projectRoot, 'database', CREDENTIALS_OUTPUT_FILE);
   fs.writeFileSync(outputPath, credentialLines.join('\n'), 'utf8');
 
-  console.log('Seeded 15 users successfully.');
+  console.log(`Seeded ${DUMMY_USERS.length} users successfully.`);
   console.log(`Credentials saved to: ${outputPath}`);
 }
 
@@ -548,4 +891,5 @@ main().catch((error) => {
   console.error('Seeding failed:', error.message);
   process.exit(1);
 });
+
 

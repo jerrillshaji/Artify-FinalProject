@@ -6,6 +6,12 @@ import Button from '../components/ui/Button';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
 
+const withCacheBuster = (imageUrl, version) => {
+  if (!imageUrl || imageUrl.startsWith('data:') || !version) return imageUrl;
+  const separator = imageUrl.includes('?') ? '&' : '?';
+  return `${imageUrl}${separator}v=${encodeURIComponent(version)}`;
+};
+
 const formatGenreLabel = (genre) =>
   genre
     ? genre.toLowerCase() === 'dj'
@@ -77,7 +83,7 @@ const ProfileView = ({ role }) => {
       if (raterIds.length > 0) {
         const { data: ratersData, error: ratersError } = await supabase
           .from('profiles')
-          .select('id, username, full_name, avatar_url, is_verified')
+          .select('id, username, full_name, avatar_url, updated_at, is_verified')
           .in('id', raterIds);
 
         if (ratersError) {
@@ -300,7 +306,7 @@ const ProfileView = ({ role }) => {
 
       const { data: usersData } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, role, is_verified')
+        .select('id, username, full_name, avatar_url, updated_at, role, is_verified')
         .in('id', uniqueIds);
 
       setFollowersList(mapUsersByIdOrder(followerIds, usersData || []));
@@ -465,12 +471,25 @@ const ProfileView = ({ role }) => {
 
     setBackgroundUploading(true);
     try {
-      const imageDataUrl = await readFileAsDataUrl(file);
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/background.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+      const backgroundUrl = urlData.publicUrl;
 
       const { error } = await supabase
         .from('profiles')
         .update({
-          background_url: imageDataUrl,
+          background_url: backgroundUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -483,7 +502,7 @@ const ProfileView = ({ role }) => {
         if (!prevProfile) return prevProfile;
         return {
           ...prevProfile,
-          background_url: imageDataUrl,
+          background_url: backgroundUrl,
         };
       });
     } catch (error) {
@@ -593,7 +612,7 @@ const ProfileView = ({ role }) => {
   const profileRole = profile?.role || role || 'artist';
   const realName = profile?.full_name || user?.user_metadata?.full_name || 'Name not set';
   const displayName = profile?.username ? `@${profile.username}` : (realName || (profileRole === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.'));
-  const avatarUrl = profile?.avatar_url || (profileRole === 'artist' ? profile?.portfolio_images?.[0] : null);
+  const avatarUrl = withCacheBuster(profile?.avatar_url || (profileRole === 'artist' ? profile?.portfolio_images?.[0] : null), profile?.updated_at);
   const bio = profile?.bio || 'No bio added yet.';
   const location = profile?.location || 'Location not set';
   const isVerified = profile?.is_verified || false;
@@ -643,7 +662,7 @@ const ProfileView = ({ role }) => {
             <div className="relative flex-shrink-0">
               <div className="w-16 h-16 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full p-0.5 sm:p-1 bg-gradient-to-br from-fuchsia-500 to-cyan-500">
                 <img 
-                  src={avatarUrl || `https://i.pravatar.cc/150?img=${profileRole === 'artist' ? '1' : '60'}`} 
+                  src={avatarUrl || `https://i.pravatar.cc/150?u=${profile?.id || 'artify'}`} 
                   className="w-full h-full rounded-full object-cover border-2 sm:border-4 border-[#050505]" 
                   alt={displayName}
                 />
@@ -800,7 +819,7 @@ const ProfileView = ({ role }) => {
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-2 min-w-0">
                               <img
-                                src={item.rater?.avatar_url || `https://i.pravatar.cc/80?u=${item.rater_id}`}
+                                src={withCacheBuster(item.rater?.avatar_url, item.rater?.updated_at) || `https://i.pravatar.cc/80?u=${item.rater_id}`}
                                 alt={item.rater?.full_name || item.rater?.username || 'User'}
                                 className="h-8 w-8 rounded-full border border-white/20 object-cover"
                               />
@@ -1079,7 +1098,7 @@ const ProfileView = ({ role }) => {
                         <div className="relative shrink-0">
                           <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-br from-fuchsia-500 to-cyan-500">
                             <img
-                              src={item.avatar_url || `https://i.pravatar.cc/150?u=${item.id}`}
+                              src={withCacheBuster(item.avatar_url, item.updated_at) || `https://i.pravatar.cc/150?u=${item.id}`}
                               alt={item.full_name || item.username || 'User'}
                               className="w-full h-full rounded-full object-cover border-2 border-[#050505]"
                             />

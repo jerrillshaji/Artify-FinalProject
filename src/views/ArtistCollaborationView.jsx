@@ -8,6 +8,12 @@ import Badge from '../components/ui/Badge';
 import BackButton from '../components/layout/BackButton';
 import { useSupabase } from '../context/SupabaseContext';
 
+const withCacheBuster = (imageUrl, version) => {
+  if (!imageUrl || imageUrl.startsWith('data:') || !version) return imageUrl;
+  const separator = imageUrl.includes('?') ? '&' : '?';
+  return `${imageUrl}${separator}v=${encodeURIComponent(version)}`;
+};
+
 const ArtistCollaborationView = () => {
   const navigate = useNavigate();
   const { supabase, user } = useSupabase();
@@ -123,10 +129,10 @@ const ArtistCollaborationView = () => {
             id,
             username,
             full_name,
-            avatar_url
+            avatar_url,
+            updated_at
           )
         `)
-        .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -396,7 +402,7 @@ const ArtistCollaborationView = () => {
                       >
                         <div className="flex items-center gap-3 mb-4">
                           <img
-                            src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                            src={withCacheBuster(profile.avatar_url, profile.updated_at) || `https://i.pravatar.cc/150?u=${profile.id}`}
                             alt={profile.full_name}
                             className="w-12 h-12 rounded-full object-cover border border-white/10"
                           />
@@ -435,7 +441,7 @@ const ArtistCollaborationView = () => {
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <img
-                      src={profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`}
+                      src={withCacheBuster(profile.avatar_url, profile.updated_at) || `https://i.pravatar.cc/150?u=${profile.id}`}
                       alt={profile.full_name}
                       className="w-12 h-12 rounded-full object-cover border border-white/10"
                     />
@@ -507,7 +513,7 @@ const ArtistCollaborationView = () => {
               <div className="flex items-center justify-between pt-4 border-t border-white/5">
                 <div className="flex items-center gap-2">
                   <img
-                    src={collab.creator?.avatar_url || `https://i.pravatar.cc/150?u=${collab.creator_id}`}
+                    src={withCacheBuster(collab.creator?.avatar_url, collab.creator?.updated_at) || `https://i.pravatar.cc/150?u=${collab.creator_id}`}
                     alt={collab.creator?.full_name}
                     className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex-shrink-0"
                   />

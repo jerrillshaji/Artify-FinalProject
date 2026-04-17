@@ -5,6 +5,12 @@ import BackButton from '../components/layout/BackButton';
 import Button from '../components/ui/Button';
 import { useSupabase } from '../context/SupabaseContext';
 
+const withCacheBuster = (imageUrl, version) => {
+  if (!imageUrl || imageUrl.startsWith('data:') || !version) return imageUrl;
+  const separator = imageUrl.includes('?') ? '&' : '?';
+  return `${imageUrl}${separator}v=${encodeURIComponent(version)}`;
+};
+
 const POST_DETAIL_SELECT = `
   id,
   author_id,
@@ -18,6 +24,7 @@ const POST_DETAIL_SELECT = `
     username,
     full_name,
     avatar_url,
+    updated_at,
     is_verified,
     role
   )
@@ -151,7 +158,7 @@ const PostDetailView = () => {
               className="flex items-center gap-3 text-left"
             >
               <img
-                src={post.author?.avatar_url || `https://i.pravatar.cc/150?u=${post.author?.id || post.author_id}`}
+                src={withCacheBuster(post.author?.avatar_url, post.author?.updated_at) || `https://i.pravatar.cc/150?u=${post.author?.id || post.author_id}`}
                 alt={post.author?.full_name || 'Profile'}
                 className="h-12 w-12 rounded-full object-cover"
               />
