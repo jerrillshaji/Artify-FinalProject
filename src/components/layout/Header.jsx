@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BellRing, User, LogOut, X } from 'lucide-react';
 import { useSupabase } from '../../context/SupabaseContext';
@@ -38,6 +38,8 @@ const Header = ({ user, role, onLogout }) => {
   const [followedIds, setFollowedIds] = useState([]);
   const [unreadPostCount, setUnreadPostCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
 
   const activeUserId = authUser?.id || user?.id;
   const seenPostsStorageKey = useMemo(
@@ -216,6 +218,21 @@ const Header = ({ user, role, onLogout }) => {
     setUnreadPostCount(0);
   }, [setSeenAtNow, showNotifications]);
 
+  useEffect(() => {
+    if (!showProfileMenu) return undefined;
+
+    const handleOutsideClick = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+    };
+  }, [showProfileMenu]);
+
   // Safe access to user data
   const userName = profile?.full_name || user?.user_metadata?.full_name || (role === 'artist' ? 'Aria Sterling' : 'TechGlobal Inc.');
   const metadataUsername = user?.user_metadata?.username;
@@ -263,19 +280,28 @@ const Header = ({ user, role, onLogout }) => {
               {userRole}
             </p>
           </div>
-          <div className="group relative">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-500 p-0.5 cursor-pointer transition-all flex-shrink-0">
+          <div className="group relative" ref={profileMenuRef}>
+            <button
+              type="button"
+              onClick={() => setShowProfileMenu((prev) => !prev)}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-500 p-0.5 cursor-pointer transition-all flex-shrink-0"
+              aria-label="Open profile menu"
+              aria-expanded={showProfileMenu}
+            >
               <img
                 key={userImage}
                 src={userImage}
                 className="w-full h-full rounded-full object-cover border-2 border-[#050505]"
                 alt="Profile"
               />
-            </div>
+            </button>
             {/* Dropdown menu */}
-            <div className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+            <div className={`absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-200 z-50 ${showProfileMenu ? 'opacity-100 visible' : 'opacity-0 invisible'} sm:group-hover:opacity-100 sm:group-hover:visible`}>
               <button
-                onClick={() => navigate(profilePath)}
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  navigate(profilePath);
+                }}
                 className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-3"
               >
                 <User size={16} />
@@ -283,7 +309,10 @@ const Header = ({ user, role, onLogout }) => {
               </button>
               <hr className="border-white/10" />
               <button
-                onClick={onLogout}
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  onLogout();
+                }}
                 className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-3"
               >
                 <LogOut size={16} />
