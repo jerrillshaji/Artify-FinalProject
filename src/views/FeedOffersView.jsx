@@ -99,6 +99,19 @@ const FeedOffersView = () => {
 
     setActingEventId(eventItem.id);
     try {
+      const { data: latestEvent, error: latestEventError } = await supabase
+        .from('events')
+        .select('id,status,visibility')
+        .eq('id', eventItem.id)
+        .maybeSingle();
+
+      if (latestEventError) throw latestEventError;
+      if (!latestEvent || latestEvent.status !== 'published' || latestEvent.visibility !== 'public') {
+        alert('This gig is no longer accepting requests.');
+        await loadOffers();
+        return;
+      }
+
       const { data: existingBooking, error: existingError } = await supabase
         .from('bookings')
         .select('id')

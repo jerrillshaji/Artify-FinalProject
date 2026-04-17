@@ -321,6 +321,19 @@ const ArtistDashboard = () => {
 
     setApplyingEventId(gig.id);
     try {
+      const { data: latestEvent, error: latestEventError } = await supabase
+        .from('events')
+        .select('id,status,visibility')
+        .eq('id', gig.id)
+        .maybeSingle();
+
+      if (latestEventError) throw latestEventError;
+      if (!latestEvent || latestEvent.status !== 'published' || latestEvent.visibility !== 'public') {
+        alert('This gig is no longer accepting requests.');
+        await loadBookings();
+        return;
+      }
+
       const amount = Number(gig.budget_max || gig.budget_min || 1);
       const { data: insertedBooking, error: bookingError } = await supabase
         .from('bookings')
