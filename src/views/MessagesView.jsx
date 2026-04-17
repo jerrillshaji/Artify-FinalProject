@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, MessageCircle, MoreHorizontal, Paperclip, Mic, Send, Phone, Video, X } from 'lucide-react';
+import { Search, MessageCircle, Paperclip, Mic, Send, X } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSupabase } from '../context/SupabaseContext';
 import BackButton from '../components/layout/BackButton';
@@ -543,12 +543,9 @@ const MessagesView = () => {
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-1 sm:gap-2">
-                  <button className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:p-2"><Phone size={16} /></button>
-                  <button className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:p-2"><Video size={16} /></button>
-                  <button className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:p-2"><MoreHorizontal size={16} /></button>
                   <button
                     onClick={() => setSelectedConversation(null)}
-                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:hidden"
+                    className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white sm:p-2"
                     aria-label="Close conversation"
                   >
                     <X size={16} />
