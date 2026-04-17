@@ -1,0 +1,1866 @@
+\documentclass[12pt,a4paper]{report}
+\newcommand{\chapterpage}[2]{
+    \clearpage
+    \thispagestyle{empty}
+
+    \vspace*{\fill}
+    \begin{center}
+        \textbf{\MakeUppercase{CHAPTER #1}}\\[1cm]
+        \textbf{\MakeUppercase{#2}}
+    \end{center}
+    \vspace*{\fill}
+
+    \clearpage
+}
+
+% ---------------- Packages ----------------
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{geometry}
+\usepackage{setspace}
+\setlength{\parindent}{0pt}     % No paragraph indentation
+\setlength{\parskip}{8pt}
+\usepackage{tocloft}
+\usepackage{float}
+\makeatletter
+\renewcommand{\@cftmaketoctitle}{%
+  \chapter*{%
+    \centering
+    \fontsize{14pt}{16pt}\selectfont
+    \textbf{TABLE OF CONTENTS}
+  }
+}
+\makeatother
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep, topsep=6pt}
+\usepackage{needspace}
+\usepackage{pdfpages}
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{14pt}{10pt}
+\titlespacing*{\subsection}{0pt}{12pt}{8pt}
+\usepackage{fancyhdr}
+\setlength{\headheight}{14pt}
+\usepackage{adjustbox}
+\usepackage{subcaption}
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single
+}
+% ---------------- Table of Contents Formatting ----------------
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+
+
+
+% Vertical spacing around title
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{20pt}
+
+% Indentation & alignment
+\setlength{\cftchapindent}{0pt}
+\setlength{\cftsecindent}{1.5em}
+
+% Fonts
+\renewcommand{\cftchapfont}{\bfseries}
+\renewcommand{\cftchappagefont}{\bfseries}
+
+% Dotted leaders
+\renewcommand{\cftdotsep}{1}
+
+% Extra breathing space between chapters
+\setlength{\cftbeforechapskip}{6pt}
+
+% ---------- LIST OF FIGURES FORMAT ----------
+\renewcommand{\listfigurename}{LIST OF FIGURES}
+
+\makeatletter
+\renewcommand{\@cftmakeloftitle}{%
+  \chapter*{%
+    \centering
+    \fontsize{14pt}{16pt}\selectfont
+    \textbf{LIST OF FIGURES}
+  }
+}
+\makeatother
+
+% Spacing similar to TOC
+\setlength{\cftbeforeloftitleskip}{17pt}
+\setlength{\cftafterloftitleskip}{20pt}
+
+% ---------- LIST OF TABLES FORMAT ----------
+\renewcommand{\listtablename}{LIST OF TABLES}
+
+\makeatletter
+\renewcommand{\@cftmakelottitle}{%
+  \chapter*{%
+    \centering
+    \fontsize{14pt}{16pt}\selectfont
+    \textbf{LIST OF TABLES}
+  }
+}
+\makeatother
+
+% Spacing similar to TOC & LOF
+\setlength{\cftbeforelottitleskip}{17pt}
+\setlength{\cftafterlottitleskip}{20pt}
+% ---------------- Page Setup ----------------
+\geometry{
+    left=1.25in,
+    right=1in,
+    top=1in,
+    bottom=1in
+}
+
+\onehalfspacing
+
+\setlength{\floatsep}{6pt}       % space between two figures
+\setlength{\textfloatsep}{6pt}   % space between figure and text
+\setlength{\intextsep}{6pt}      % space for inline floats
+
+% ---------------- Header & Footer for Main Content ----------------
+\fancypagestyle{maincontent}{
+    \fancyhf{}
+    \fancyhead[R]{\small Artify - Artist Management Platform}
+    \fancyfoot[L]{\small \thepage}
+    \fancyfoot[R]{\small Saintgits College of Engineering(Autonomous)}
+    \renewcommand{\headrulewidth}{0.4pt}
+    \renewcommand{\footrulewidth}{0.4pt}
+}
+
+% ---------------- Chapter Format (KTU Style) ----------------
+\titleformat{\section}
+{\bfseries\fontsize{14pt}{16pt}\selectfont}
+{\thesection}
+{1em}
+{}
+
+\titleformat{\subsection}
+{\bfseries\fontsize{12pt}{14pt}\selectfont}
+{\thesubsection}
+{1em}
+{}
+\newcommand{\bfFourteen}[1]{{\fontsize{14pt}{16pt}\selectfont\textbf{#1}}}
+% ---------- FIX TOC TOP SPACING ----------
+\usepackage{tocloft}
+
+% Remove extra padding before TOC title
+\setlength{\cftbeforetoctitleskip}{17pt}
+
+% Optional: space after TOC title
+\setlength{\cftaftertoctitleskip}{20pt}
+
+\makeatletter
+\renewenvironment{thebibliography}[1]
+  {\section*{}\@mkboth{}{}%
+   \list{\@biblabel{\@arabic\c@enumiv}}%
+        {\settowidth\labelwidth{\@biblabel{#1}}%
+         \leftmargin\labelwidth
+         \advance\leftmargin\labelsep
+         \itemsep=0.6\baselineskip
+         \usecounter{enumiv}%
+         \let\p@enumiv\@empty
+         \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+   \sloppy}
+  {\endlist}
+\makeatother
+\usepackage{chngcntr}
+\usepackage{chngcntr}
+\counterwithin{figure}{chapter}
+\begin{document}
+
+% ===================== PAGE 1 : TITLE PAGE =====================
+\thispagestyle{empty}
+
+\begin{center}
+\vspace*{0.3cm}
+
+\bfFourteen{PROJECT REPORT}\\[0.3cm]
+\bfFourteen{ON}\\[0.3cm]
+\bfFourteen{ARTIFY - ARTIST MANAGEMENT \& COLLABORATION PLATFORM}\\[0.6cm]
+
+\bfFourteen{Submitted By,}\\[0.2cm]
+\bfFourteen{YOUR NAME – YOUR REG NO}\\[0.5cm]
+
+\bfFourteen{To}\\[0.2cm]
+\textit{the APJ Abdul Kalam Technological University in partial}\\
+\textit{fulfillment of the requirements for the award of the degree of}\\[0.5cm]
+
+\makebox[\textwidth][c]{\bfFourteen{MASTER OF COMPUTER APPLICATIONS (INTEGRATED)}}
+
+\bfFourteen{Under the guidance of}\\[0.3cm]
+\bfFourteen{Dr. Jijo Varghese}\\
+\bfFourteen{Assistant Professor(Sr)}\\[0.8cm]
+
+% TODO: Add saintgits_logo.jpg to project folder
+\includegraphics[width=4.5cm]{saintgits_logo.jpg}\\[0.8cm]
+
+\bfFourteen{DEPARTMENT OF COMPUTER APPLICATIONS}\\[0.25cm]
+\bfFourteen{\makebox[\textwidth]{SAINTGITS COLLEGE OF ENGINEERING (AUTONOMOUS)}}
+\bfFourteen{PATHAMUTTOM, KOTTAYAM, KERALA – 686532}\\[0.3cm]
+
+\textit{(Approved by AICTE and affiliated to APJ Abdul Kalam Technological University)}\\[0.6cm]
+
+\bfFourteen{APRIL 2026}
+
+\end{center}
+
+% ===================== PAGE 2 : BONAFIDE =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+\makebox[\textwidth][c]{\fontsize{14pt}{16pt}\selectfont \textbf{SAINTGITS COLLEGE OF ENGINEERING (AUTONOMOUS)}}\\
+Kottukulam Hills, Pathamuttom, Kottayam, Kerala – 686532
+\end{center}
+
+\vspace{0.2cm}
+
+\begin{center}
+\includegraphics[width=4.5cm]{saintgits_logo.jpg}
+\end{center}
+% TODO: Add saintgits_logo.jpg to project folder
+
+\vspace{0.1cm}
+
+\begin{center}
+\fontsize{14pt}{16pt}\selectfont
+\textbf{BONAFIDE CERTIFICATE}
+\end{center}
+
+\vspace{0.2cm}
+
+Certified that the report entitled \textbf{Artify - Artist Management \& Collaboration Platform} submitted by \textbf{YOUR NAME – YOUR REG NO} to the APJ Abdul Kalam Technological University in partial fulfillment of the requirements for the award of the Degree of \textbf{Master of Computer Applications(Integrated)} is a bonafide record of the project work carried out by her under our guidance and supervision. This report in any form has not been submitted to any other University or Institute for any purpose.
+
+\vspace{2.2cm}
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\raggedright
+\textbf{Dr. Jijo Varghese}\\
+Internal Guide
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\textbf{Dr. Jijo Varghese}\\
+Project Co-ordinator
+\end{minipage}
+
+\vspace{1.8cm}
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\raggedright
+\textbf{Dr. Rani Saritha R}\\
+Head Of Department
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\textbf{Dr. Sudha T}\\
+Principal
+\end{minipage}
+
+\vspace{1.8cm}
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\raggedright
+\vspace{0pt}
+\textit{Viva-voce held on:} 
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\raggedleft
+\vspace{0pt}
+\textbf{External Examiner}
+\end{minipage}
+
+% TODO: Add certificate.pdf to project folder (Bonafide Certificate signed document)
+\includepdf[
+    pages=-,
+    scale=0.75,
+    offset=1.25cm 0cm
+]{certificate.pdf}
+
+
+% ===================== PAGE 3 : ACKNOWLEDGEMENT =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{ACKNOWLEDGEMENT}}
+
+\end{center}
+
+\vspace{1cm}
+
+At the outset, I thank the lord almighty for his abundant grace, strength to make our endeavour a success. I express my deep-felt gratitude to \textbf{Dr. Sudha T.}, Principal, Saintgits College of Engineering(Autonomous) for her warm support with regard to the work and to the management for providing the facilities required.
+
+
+I would like to place my deep gratitude to \textbf{Prof. Mini Punnoose,} Director MCA, Saintgits College of Engineering (Autonomous) for her constant encouragement.I express my gratitude to \textbf{Dr. Rani Saritha R}, Head, Department of Computer Applications, Saintgits College of Engineering(Autonomous), for her support and guidance.
+
+
+I am profoundly grateful to \textbf{Dr. Jijo Varghese,} Assistant Professor(Sr) , my project guide as well as the project co-ordinator for his valuable guidance, help, suggestions and assessment.
+
+
+Furthermore, I would like to thank all others especially my parents and numerous friends. This project report would not have been a success without their inspiration, valuable suggestions and moral support from them throughout its course.
+
+
+\vspace{2cm}
+
+\begin{flushright}
+\textbf{YOUR NAME}
+\end{flushright}
+
+% ===================== PAGE 4 : DECLARATION =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{DECLARATION}}
+
+
+\end{center}
+
+\vspace{1cm}
+
+I, the undersigned, hereby declare that the project report
+\textbf{"ARTIFY - ARTIST MANAGEMENT \& COLLABORATION PLATFORM"} submitted for partial
+fulfillment of requirements for the award of Degree of Master of Computer Applications(Integrated) of the APJ Abdul Kalam Technological University, Kerala,
+is a bonafide work done by me under the supervision of
+\textbf{Dr. JIJO VARGHESE}. This submission represents my ideas in my own words, and where ideas or words of others have been included, I have adequately and accurately cited and referenced the original sources. I also declare that I have adhered to the ethics of academic honesty and integrity and have not misrepresented or fabricated any data, idea, fact, or source in my submission.I understand that any violation of the above will be a cause for disciplinary action by the institute and/or the University and can also evoke penal action from the sources which have not been properly cited or from whom proper permission has not been obtained.This report has not previously formed the basis for the award of any degree, diploma, or similar title of any other University.
+
+\vspace{2cm}
+
+\begin{flushright}
+\textbf{YOUR NAME}
+\end{flushright}
+
+\noindent
+Place: Kottayam\\
+Date:
+
+
+% ===================== PAGE 5 : ABSTRACT =====================
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+{\fontsize{16pt}{18pt}\selectfont\textbf{ABSTRACT}}
+\end{center}
+
+\vspace{1cm}
+
+In the modern entertainment and events industry, artists and managers face significant challenges in connecting, collaborating, and managing professional relationships efficiently. Traditional methods rely heavily on fragmented communication channels, manual booking processes, and lack of centralized platforms for discovery and collaboration. This project presents Artify, a comprehensive web-based platform designed to bridge the gap between artists, managers, and event organizers.
+
+Artify is built as a full-stack application using React, Vite, and TailwindCSS for the frontend, with Supabase serving as the backend-as-a-service for authentication, database, and storage. The platform provides role-based access for artists and managers, enabling artists to showcase their portfolios, browse open gigs, and manage bookings, while managers can discover talent, publish events, and handle booking requests efficiently.
+
+Key features include secure user authentication with email verification, profile management with avatar uploads, artist portfolio展示 with genres and pricing, event management with visibility controls, a booking system with status tracking, encrypted messaging between users, and location-based discovery using geolocation APIs. The platform emphasizes security through Row Level Security (RLS) policies, encrypted message storage using AES-GCM, and proper data normalization.
+
+The system follows modern web development practices with component-based architecture, responsive design, and real-time updates. Artify simplifies the booking workflow, enhances discoverability, and provides a professional network for the artist community, making it easier for talent to find opportunities and for managers to build successful events.
+
+This project demonstrates full-stack development skills, database design with normalization, secure authentication flows, real-time communication, and modern UI/UX principles, making it a valuable solution for the entertainment industry.
+
+\newpage
+\thispagestyle{empty}
+
+\begin{center}
+\textbf{\Large PLAGIARISM REPORT}
+\end{center}
+
+\vspace{0.3cm}
+
+% TODO: Add plagiarism_report.pdf to project folder
+\begin{center}
+\includegraphics[page=1, width=0.85\textwidth]{plagiarism_report.pdf}
+\end{center}
+
+% ===================== TABLE OF CONTENTS =====================
+\pagenumbering{gobble}
+\pagestyle{empty}
+
+\tableofcontents
+
+
+\clearpage
+
+\listoffigures
+
+\clearpage
+
+\listoftables
+
+\clearpage
+
+
+% ===================== MAIN CONTENT =====================
+\newpage
+\pagenumbering{arabic}
+\pagestyle{maincontent}
+\setcounter{chapter}{1}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 1}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{INTRODUCTION}}
+\end{minipage}}
+
+\clearpage
+
+\section{Introduction}
+The entertainment and events industry has experienced tremendous growth in recent years, with increasing demand for live performances, corporate events, and cultural programs. However, despite this growth, the process of connecting artists with event managers remains largely inefficient and fragmented. Artists struggle to find genuine opportunities, while managers face challenges in discovering verified talent and managing bookings professionally.
+
+Traditional approaches to artist booking rely heavily on social media platforms, word-of-mouth referrals, and manual communication through emails or phone calls. These methods are time-consuming, lack transparency, and often result in miscommunication or missed opportunities. There is a clear need for a centralized, professional platform that streamlines the entire process from discovery to booking completion.
+
+Artify addresses these challenges by providing a comprehensive platform where artists can create professional profiles, showcase their portfolios, and browse available gigs. Managers and event organizers can publish events, discover talent based on specific criteria, and manage booking requests efficiently. The platform eliminates the need for multiple tools and provides a unified workspace for all stakeholders.
+
+The system implements secure user authentication with role-based access control, ensuring that artists and managers have appropriate features tailored to their needs. Artists can track their booking status, view upcoming gigs, and communicate with managers through encrypted messaging. Managers can publish events with detailed information, review booking requests, and maintain professional relationships with artists.
+
+A key aspect of Artify is its focus on security and data privacy. All sensitive communications are encrypted using modern cryptographic standards, and the database implements Row Level Security policies to ensure users can only access their own data. The platform also integrates geolocation services to enable location-based discovery, helping users find opportunities and talent in their vicinity.
+
+The platform is built using modern web technologies including React for the frontend, Supabase for backend services, and TailwindCSS for responsive design. This technology stack ensures high performance, scalability, and an excellent user experience across devices.
+
+Overall, Artify aims to revolutionize how artists and managers connect and collaborate, making the booking process more efficient, transparent, and professional.
+
+\section{Organisation Profile}
+Blueprint Technologies is a software development company specializing in enterprise-level solutions, particularly in the domain of Enterprise Resource Planning (ERP) systems. The organization operates through its platform BPTERP, which provides integrated business management solutions to streamline and automate various organizational processes.
+
+The company focuses on developing customized ERP systems that help businesses manage key operations such as finance, human resources, inventory, sales, and customer relationships within a unified framework. These solutions are designed to improve operational efficiency, enhance data visibility, and support effective decision-making.
+
+Blueprint Technologies follows a client-centric approach, ensuring that each solution is tailored to meet specific business requirements. By utilizing modern technologies, including cloud-based platforms and scalable architectures, the company delivers reliable and high-performance software systems.
+
+The organization also adopts industry-standard development practices such as Agile methodologies and version control systems to ensure efficient and collaborative development. Additionally, it emphasizes data security, system reliability, and performance optimization, which are essential for enterprise applications.
+
+Overall, Blueprint Technologies is committed to delivering innovative, scalable, and efficient software solutions, making it a dependable provider of enterprise technology services.
+
+\section{Scope and Availability}
+The scope of the Artify platform extends across various segments of the entertainment and events industry. The system is designed to serve multiple user types including individual artists, band members, event managers, corporate organizers, and venue owners. Its applicability makes it a versatile solution for diverse use cases within the industry.
+
+One of the primary application areas is in music and live performances. Musicians, singers, DJs, and bands can use Artify to create professional profiles, upload portfolio content, and connect with event managers seeking talent for concerts, weddings, corporate events, and private functions. The platform enables artists to showcase their genres, pricing, and availability, making it easier for managers to find the right fit for their events.
+
+The system is also applicable in the corporate events sector. Companies organizing annual functions, product launches, and team-building events can use Artify to discover and book entertainment talent efficiently. The platform provides transparency in pricing and availability, reducing negotiation time and ensuring professional agreements.
+
+In addition, Artify can be used by wedding planners and private event organizers. These users often face challenges in finding verified artists and managing multiple bookings. The platform centralizes the process, allowing planners to browse artists, check availability, and manage all bookings from a single dashboard.
+
+Another important area of applicability is in educational institutions and cultural festivals. Colleges, universities, and festival organizers can use the platform to discover talent, publish event details, and manage artist communications professionally. The booking system helps track all requests and ensures nothing falls through the cracks.
+
+The platform also benefits emerging artists who struggle to gain visibility in the industry. Artify provides a level playing field where talent can be discovered based on merit and portfolio quality rather than existing connections. This democratization of opportunity helps new artists build their careers.
+
+However, the current scope of the project is limited to the Indian market and focuses primarily on music and performance artists. Future expansions could include other entertainment categories such as comedians, speakers, dancers, and visual artists. Additionally, features such as contract management, payment processing, and review systems could enhance the platform's capabilities.
+
+Despite these limitations, the Artify platform has significant potential for growth and expansion. Features such as mobile applications, advanced analytics, and integration with ticketing systems can be incorporated to enhance its value proposition.
+
+In conclusion, the scope of Artify is broad and adaptable, making it a valuable tool for the entertainment industry. Its applicability lies in its ability to simplify the booking process, enhance discoverability, and provide professional tools for artists and managers alike.
+
+\setcounter{chapter}{2}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 2}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{REQUIREMENTS AND ANALYSIS}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 2 \quad REQUIREMENTS AND ANALYSIS}
+\setcounter{section}{0}
+\section{Existing System}
+The current landscape of artist management and booking is characterized by fragmented processes and reliance on multiple disconnected tools. Artists and managers typically use a combination of social media platforms, messaging apps, email, and spreadsheets to manage their professional relationships and bookings. This fragmented approach leads to inefficiencies and missed opportunities.
+
+One of the major problems with existing systems is the lack of a centralized platform dedicated to artist-manager connections. Artists often rely on Instagram, Facebook, or YouTube to showcase their work, but these platforms are not designed for professional bookings. Managers must sift through unrelated content to find suitable talent, which is time-consuming and inefficient.
+
+Another key limitation is the absence of standardized booking processes. Communication between artists and managers often happens through informal channels like WhatsApp or email, leading to miscommunication about event details, pricing, and expectations. There is no systematic way to track booking requests, confirmations, or cancellations.
+
+Portfolio management is another area where existing systems fall short. Artists struggle to maintain professional portfolios across multiple platforms, and managers have no reliable way to verify an artist's credentials or past performance quality. This lack of standardization makes it difficult to make informed decisions.
+
+Security and privacy are also significant concerns in existing approaches. Personal contact information is often shared publicly, leading to spam and unwanted communications. There is no proper system for verifying the authenticity of users, which can result in fraudulent bookings or scams.
+
+The problem can be summarized through the following key limitations:
+
+\begin{itemize}
+\item No centralized platform for artist-manager connections
+
+\item Fragmented communication across multiple channels
+
+\item Lack of standardized booking workflows
+
+\item Difficulty in verifying artist credentials and portfolios
+
+\item Inefficient discovery and search mechanisms
+
+\item Poor tracking of booking status and history
+
+\item Security and privacy concerns with personal information
+
+\item No encrypted messaging for sensitive communications
+
+\item Limited location-based discovery features
+\end{itemize}
+
+These challenges highlight the need for a modern, integrated solution that can streamline the entire artist booking workflow. The absence of such a system results in wasted time, missed opportunities, and unprofessional experiences for both artists and managers.
+
+Therefore, the problem statement addressed by this project is:
+
+\textit{To design and develop a secure, centralized platform that connects artists with managers, streamlines the booking process, provides professional portfolio management, and ensures secure communication between all stakeholders.}
+
+\section{Proposed System}
+To overcome the limitations of existing systems, the proposed solution is the development of Artify, a comprehensive web-based platform that connects artists and managers in a professional environment. The system provides role-based features tailored to the specific needs of each user type, ensuring an optimal experience for all stakeholders.
+
+The proposed system focuses on security, usability, and efficiency. It implements secure authentication with email verification, ensuring that only verified users can access the platform. Role-based access control ensures that artists and managers see features relevant to their needs.
+
+Artify provides artists with tools to create professional profiles, upload portfolio images, specify their genres and pricing, and manage their availability. Artists can browse open gigs, submit booking requests, and track the status of their applications. The platform also provides a calendar view of upcoming gigs, helping artists manage their schedules effectively.
+
+For managers and event organizers, the platform offers event publishing tools with detailed information including venue, budget, and requirements. Managers can discover artists based on location, genre, and pricing, and can review booking requests efficiently. The platform provides encrypted messaging, enabling secure communication with artists.
+
+A key feature of the proposed system is the booking management workflow. Booking requests are tracked with clear status indicators (pending, accepted, declined), and both parties receive updates throughout the process. The system maintains a history of all bookings, helping users build their professional reputation.
+
+The platform also implements location-based discovery using geolocation APIs. Artists can find gigs in their vicinity, and managers can discover local talent, reducing travel costs and logistics complexity.
+
+Security is a top priority in the proposed system. All messages are encrypted using AES-GCM encryption, ensuring that sensitive communications remain private. The database implements Row Level Security policies to ensure users can only access their own data. Profile updates require authentication, and file uploads are validated for security.
+
+The key features of the proposed system include:
+
+\begin{itemize}
+\item Secure authentication with email verification
+
+\item Role-based access for artists and managers
+
+\item Professional profile management with avatars
+
+\item Artist portfolio with genres, pricing, and media
+
+\item Event publishing with visibility controls
+
+\item Booking system with status tracking
+
+\item Encrypted messaging between users
+
+\item Location-based discovery
+
+\item Calendar view for upcoming gigs
+
+\item Responsive design for all devices
+\end{itemize}
+
+From a system perspective, the workflow of Artify can be described as follows:
+
+\begin{itemize}
+\item User registers and selects role (artist or manager)
+
+\item Email verification is completed
+
+\item User creates profile with relevant details
+
+\item Artists upload portfolio content; managers publish events
+
+\item Discovery and browsing of gigs or talent
+
+\item Booking requests are submitted and tracked
+
+\item Encrypted messaging for communication
+
+\item Booking status is updated and confirmed
+
+\item Event completion and feedback
+\end{itemize}
+
+The proposed system not only improves efficiency but also enhances professionalism in the artist booking industry. It bridges the gap between talent and opportunity, making it easier for artists to build careers and for managers to create successful events.
+
+In conclusion, Artify serves as a comprehensive solution that addresses the shortcomings of existing systems by integrating discovery, booking, communication, and management into a single secure platform.
+
+\section{Feasibility Study}
+A feasibility study is an essential step in system development, as it evaluates whether the proposed system is practical and achievable within given constraints. The feasibility of the Artify project can be analyzed from multiple perspectives, including technical, economic, operational, and schedule feasibility.
+
+\textbf{1. Technical Feasibility}
+
+Technical feasibility examines whether the required technology and resources are available to develop the system. The Artify project uses modern, widely-adopted technologies such as React, Vite, TailwindCSS, and Supabase. These technologies are well-supported, reliable, and suitable for building scalable web applications.
+
+React provides a component-based architecture for building interactive user interfaces. Vite ensures fast development and optimized builds. TailwindCSS enables responsive design with minimal custom CSS. Supabase provides backend-as-a-service with authentication, database, and storage, eliminating the need for complex backend infrastructure.
+
+The use of modern web APIs such as Geolocation API for location services and Web Crypto API for encryption ensures that the system leverages browser capabilities effectively. Since these technologies are already available and well-documented, the project is technically feasible.
+
+\textbf{2. Economic Feasibility}
+
+Economic feasibility evaluates the cost-effectiveness of the system. The Artify project is developed using open-source tools and frameworks, which significantly reduces development costs. Tools like Visual Studio Code, Supabase (free tier), and GitHub are freely available, making the project affordable for academic and small-scale implementations.
+
+Supabase offers a generous free tier that includes authentication, database, and storage, making it cost-effective for initial deployment. The platform's pay-as-you-grow model ensures that costs scale with usage, making it economically viable for startups and small businesses.
+
+Additionally, the system reduces manual effort and improves efficiency for users, which can lead to cost savings in the long run. Therefore, the project is economically viable.
+
+\textbf{3. Operational Feasibility}
+
+Operational feasibility determines whether the system can be effectively used in a real-world environment. Artify is designed with a user-friendly interface, making it accessible to users with varying levels of technical expertise.
+
+The platform automates complex processes such as booking management and secure communication, reducing the need for manual coordination. The responsive design ensures that users can access the platform from desktops, tablets, or mobile devices, enhancing accessibility.
+
+The role-based approach ensures that users see only relevant features, reducing cognitive load and improving the overall user experience. Hence, the system is operationally feasible.
+
+\textbf{4. Schedule Feasibility}
+
+Schedule feasibility assesses whether the project can be completed within the given timeframe. The Artify project follows a modular development approach, where each component is developed and tested independently.
+
+By dividing the project into phases such as design, development, testing, and deployment, it becomes easier to manage time effectively. Given proper planning and resource allocation, the project can be completed within the academic schedule.
+
+\textbf{5. Legal and Ethical Feasibility}
+
+The system complies with standard data handling practices and ensures user data privacy through authentication and encryption mechanisms. Since it uses open-source technologies and Supabase's compliant infrastructure, there are no major legal constraints.
+
+\textbf{Conclusion of Feasibility Study}
+
+The feasibility analysis indicates that the Artify project is:
+
+\begin{itemize}
+\item Technically achievable
+
+\item Economically viable
+
+\item Operationally practical
+
+\item Schedulable within the given timeline
+\end{itemize}
+
+Thus, the project is feasible and suitable for implementation.
+
+\section{Conceptual Modelling}
+Conceptual modelling represents the high-level structure of the system, illustrating how different components interact with each other. It provides a clear understanding of the system's functionality without focusing on implementation details.
+
+The conceptual model of Artify consists of the following key entities:
+
+\begin{itemize}
+\item User (Artist/Manager)
+
+\item Profile
+
+\item Artist Details
+
+\item Manager Details
+
+\item Event
+
+\item Booking
+
+\item Message
+\end{itemize}
+
+The \textbf{User} is the primary entity who interacts with the system. Each user has a unique identity and secure login credentials. Users can be either artists or managers, determined during registration.
+
+The \textbf{Profile} entity stores core user information such as name, email, avatar, bio, location, and social links. Each user has exactly one profile.
+
+The \textbf{Artist Details} entity stores artist-specific information such as stage name, genres, pricing, portfolio images, and availability. This entity exists only for users with the artist role.
+
+The \textbf{Manager Details} entity stores manager-specific information such as company name, company type, and event statistics. This entity exists only for users with the manager role.
+
+The \textbf{Event} entity represents events published by managers. It contains attributes such as title, description, venue, budget, event date, and visibility settings.
+
+The \textbf{Booking} entity represents booking requests between artists and managers. It includes status tracking, offer amounts, and event details.
+
+The \textbf{Message} entity stores encrypted communications between users. Messages are linked to sender and receiver, ensuring secure and private conversations.
+
+\textbf{Relationships Between Entities}
+
+\begin{itemize}
+\item One User has one Profile
+
+\item One Profile can have one Artist Details or one Manager Details
+
+\item One Manager can publish multiple Events
+
+\item One Event can have multiple Booking requests
+
+\item One Artist can have multiple Bookings
+
+\item Two Users can exchange multiple Messages
+\end{itemize}
+
+\textbf{Conceptual Workflow}
+
+\begin{itemize}
+\item User registers and selects role
+
+\item Profile is created automatically
+
+\item Artist/Manager details are populated
+
+\item Manager publishes events
+
+\item Artist browses gigs and submits requests
+
+\item Booking status is tracked
+
+\item Users communicate via encrypted messages
+
+\item Event is completed and relationship is maintained
+\end{itemize}
+
+This conceptual model ensures clarity in system design and helps in identifying key components and their interactions.
+
+\section{Planning and Scheduling}
+Planning and scheduling are critical aspects of project development, as they ensure that the project is completed within the defined timeframe and meets all objectives. The Artify project follows a structured development plan with clearly defined phases.
+
+\textbf{Project Planning}
+
+The planning phase involves identifying requirements, defining objectives, and designing the system architecture. This includes:
+
+\begin{itemize}
+\item Requirement analysis
+
+\item System design
+
+\item Technology selection
+
+\item Resource allocation
+\end{itemize}
+
+A clear roadmap is created to guide the development process.
+
+\textbf{Project Phases}
+
+The project is divided into the following phases:
+
+\begin{itemize}
+\item \textbf{Requirement Analysis Phase:} Understanding user needs, studying existing systems, and defining functional requirements
+
+\item \textbf{System Design Phase:} Creating database schema, UI/UX design, and system architecture
+
+\item \textbf{Development Phase:} Implementing modules such as authentication, profile management, event publishing, booking system, and messaging
+
+\item \textbf{Testing Phase:} Verifying functionality, security testing, and fixing bugs
+
+\item \textbf{Deployment Phase:} Final implementation, documentation, and user training
+\end{itemize}
+
+\textbf{Scheduling Approach}
+
+The project follows a time-based schedule similar to a Gantt chart. Tasks are allocated specific durations to ensure timely completion.
+
+Sample Timeline:
+
+\begin{itemize}
+\item Week 1–2: Requirement Analysis and System Design
+
+\item Week 3–5: Authentication and Profile Management
+
+\item Week 6–8: Event and Booking System Development
+
+\item Week 9–10: Messaging and Encryption Implementation
+
+\item Week 11–12: Testing and Documentation
+\end{itemize}
+
+\textbf{Risk Management}
+
+Potential risks include:
+
+\begin{itemize}
+\item Delays in development due to complexity
+
+\item Technical challenges with encryption or geolocation
+
+\item Integration issues with Supabase services
+\end{itemize}
+
+These risks are managed through proper planning, regular monitoring, and testing.
+
+\textbf{Tools Used}
+
+\begin{itemize}
+\item Visual Studio Code for development
+
+\item Git and GitHub for version control
+
+\item Supabase Dashboard for database management
+
+\item Overleaf for documentation
+\end{itemize}
+
+Effective planning and scheduling ensure that the project progresses smoothly and is completed successfully within the given timeframe.
+
+\setcounter{chapter}{3}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 3}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{SYSTEM SPECIFICATION}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 3 \quad SYSTEM SPECIFICATION}
+\setcounter{section}{0}
+\section{Software and Hardware Requirements}
+
+The development and execution of the Artify system require a well-defined combination of software and hardware resources to ensure smooth performance, scalability, and reliability. As a modern web-based platform, the system is designed to operate efficiently using widely available technologies and moderate computing resources.
+
+\subsection{Software Requirements}
+
+The software requirements of the Artify system include programming languages, frameworks, databases, and supporting tools necessary for development and deployment.
+
+The frontend of the system is developed using React, a popular JavaScript library for building user interfaces. React's component-based architecture enables modular development and reusability. Vite is used as the build tool, providing fast development server startup and optimized production builds.
+
+TailwindCSS is used for styling, providing a utility-first approach that enables rapid UI development with responsive design capabilities. This ensures the platform works seamlessly across desktop, tablet, and mobile devices.
+
+For backend services, Supabase is used as a Backend-as-a-Service (BaaS) platform. Supabase provides authentication, PostgreSQL database, and storage services, eliminating the need for custom backend infrastructure. It also provides Row Level Security for data protection.
+
+The system integrates Web Crypto API for message encryption, ensuring secure communications between users. Geolocation API is used for location-based features, enabling distance calculations and nearby discovery.
+
+The major software requirements can be summarized as follows:
+
+\begin{itemize}
+    \item Operating System: Windows, Linux, or macOS
+    \item Frontend Framework: React 19+
+    \item Build Tool: Vite
+    \item Styling: TailwindCSS 4+
+    \item Backend: Supabase (PostgreSQL, Auth, Storage)
+    \item Routing: React Router DOM
+    \item Icons: Lucide React, React Icons
+    \item Development Tools: Visual Studio Code
+    \item Version Control: Git and GitHub
+    \item Browser: Modern browser with Web Crypto API support
+\end{itemize}
+
+\subsection{Hardware Requirements}
+
+The hardware requirements for the Artify system are minimal, making it accessible to a wide range of users. The system is designed to run efficiently on standard computing devices without requiring high-end infrastructure.
+
+A system with a modern processor such as an Intel Core i3 or higher is sufficient for development and execution. However, for improved performance, especially when handling image uploads or complex UI rendering, a higher configuration is recommended.
+
+Adequate memory is essential for handling development tools and browser tabs. A minimum of 4 GB RAM is required, while 8 GB or more is recommended for smoother performance. Sufficient storage space is necessary to store project files, dependencies, and uploaded media.
+
+Since the system involves cloud-based services and real-time features, a stable internet connection is required to ensure uninterrupted functionality.
+
+The key hardware requirements are listed below:
+
+\begin{itemize}
+    \item Processor: Intel Core i3 or higher (recommended: i5 or above)
+    \item RAM: Minimum 4 GB (recommended: 8 GB)
+    \item Storage: At least 10 GB free disk space
+    \item Network: Stable internet connection (minimum 5 Mbps)
+    \item Display: Standard monitor (minimum resolution 1366 $\times$ 768)
+\end{itemize}
+
+Overall, the hardware and software requirements of the system are designed to be practical and cost-effective, ensuring that the Artify platform can be developed and used efficiently without the need for specialized resources.
+
+\section{Functional Specifications}
+
+The functional specifications of the Artify system define the core operations and services provided to users. These specifications describe how the system behaves in response to user actions and how it processes data to deliver meaningful features.
+
+At the core of the system is the \textbf{user authentication mechanism}, which ensures secure access to the platform. Users are required to register with email and password, followed by email verification. This process helps in protecting user data and maintaining platform integrity. Once authenticated, users gain access to features based on their role (artist or manager).
+
+The \textbf{profile management} functionality allows users to create and update their professional profiles. Artists can add stage names, genres, pricing, and portfolio images. Managers can add company details and event statistics. Avatar uploads are supported through Supabase Storage.
+
+The \textbf{event management} module enables managers to create, update, and publish events. Events include details such as title, description, venue, budget, event date, and visibility settings (public or private). Managers can track all their published events and associated booking requests.
+
+A key component of the system is the \textbf{booking management} module. Artists can browse open gigs and submit booking requests. Managers can review requests and update status (pending, accepted, declined). The system maintains booking history and provides calendar views for upcoming gigs.
+
+The \textbf{messaging system} enables secure communication between artists and managers. All messages are encrypted using AES-GCM encryption before storage, ensuring privacy. The system supports real-time message retrieval and conversation history.
+
+The \textbf{location-based discovery} feature uses geolocation APIs to determine user locations and calculate distances. Artists can find gigs near them, and managers can discover local talent. This feature reduces logistics complexity and costs.
+
+The \textbf{responsive design} ensures that the platform works seamlessly across devices. The UI adapts to different screen sizes, providing an optimal experience on desktops, tablets, and mobile phones.
+
+In summary, the functional specifications of Artify focus on security, usability, and efficiency, ensuring a comprehensive platform for artist management and collaboration.
+
+\section{Tools and Platforms Used}
+
+The development of the Artify system involves the use of a diverse set of tools and platforms that support various stages of the software development lifecycle, including design, implementation, testing, version control, and documentation.
+
+\textbf{Visual Studio Code:}  
+Visual Studio Code (VS Code) is used as the primary development environment. It provides extensive support for JavaScript and React development through extensions. Features such as syntax highlighting, code completion, debugging tools, and an integrated terminal enhance productivity.
+
+\textbf{React:}  
+React is used as the core frontend library. Its component-based architecture enables modular development, making the codebase maintainable and scalable. React's virtual DOM ensures efficient rendering and smooth user interactions.
+
+\textbf{Vite:}  
+Vite is used as the build tool and development server. It provides instant server startup, hot module replacement (HMR), and optimized production builds. Vite's performance advantages significantly improve the development experience.
+
+\textbf{TailwindCSS:}  
+TailwindCSS is used for styling, providing a utility-first approach that enables rapid UI development. It ensures responsive design with minimal custom CSS and provides a consistent design system across the platform.
+
+\textbf{React Router DOM:}  
+React Router DOM is used for client-side routing, enabling navigation between different views without page reloads. It provides features such as nested routes, route protection, and navigation guards.
+
+\textbf{Supabase:}  
+Supabase is used as the Backend-as-a-Service platform. It provides:
+\begin{itemize}
+    \item Authentication with email verification
+    \item PostgreSQL database with Row Level Security
+    \item Storage for avatars and portfolio images
+    \item Real-time subscriptions for live updates
+\end{itemize}
+
+\textbf{Lucide React and React Icons:}  
+These libraries provide icon components used throughout the platform. They ensure consistent iconography and reduce the need for custom SVG implementations.
+
+\textbf{Web Crypto API:}  
+The Web Crypto API is used for message encryption. AES-GCM encryption ensures that all communications between users are secure and private.
+
+\textbf{Geolocation API:}  
+The browser's Geolocation API is used to determine user locations. This enables location-based features such as distance calculations and nearby discovery.
+
+\textbf{Git and GitHub:}  
+Git is used for version control, tracking changes in the source code. GitHub is used as a platform for hosting the project repository, enabling collaboration and code reviews.
+
+\textbf{Overleaf (LaTeX):}  
+Overleaf is used for preparing the project documentation. It enables the creation of professionally formatted documents with precise control over formatting.
+
+The combination of these tools and platforms plays a vital role in the successful development of the Artify system. Each tool contributes to a specific aspect of the development process, ensuring efficiency, reliability, and scalability.
+
+\setcounter{chapter}{4}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 4}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{SYSTEM DESIGN}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 4 \quad SYSTEM DESIGN}
+\setcounter{section}{0}
+
+\section{Module Descriptions}
+
+The Artify system is designed using a modular architecture that divides the application into independent yet interconnected components. This approach enhances maintainability, scalability, and clarity in system development. Each module is responsible for a specific functionality.
+
+The major modules of the system are listed below:
+
+\begin{itemize}
+    \item Authentication Module
+    \item Profile Management Module
+    \item Event Management Module
+    \item Booking Management Module
+    \item Messaging Module
+    \item Location Services Module
+    \item Storage Module
+\end{itemize}
+
+The \textbf{Authentication Module} handles user registration, login, email verification, and session management. It integrates with Supabase Auth and implements role-based access control. The module ensures that only verified users can access the platform.
+
+The \textbf{Profile Management Module} enables users to create and update their profiles. Artists can manage stage names, genres, pricing, and portfolio images. Managers can manage company details. The module handles avatar uploads and validation.
+
+The \textbf{Event Management Module} allows managers to create, update, and publish events. It includes features for setting visibility, managing budgets, and tracking event status. The module ensures that events are properly categorized and searchable.
+
+The \textbf{Booking Management Module} handles the entire booking workflow. Artists can submit requests, managers can review and update status, and both parties can track booking history. The module provides calendar views and status notifications.
+
+The \textbf{Messaging Module} enables secure communication between users. All messages are encrypted before storage using AES-GCM encryption. The module supports conversation history and real-time updates.
+
+The \textbf{Location Services Module} uses geolocation APIs to determine user locations and calculate distances. It enables location-based discovery and helps users find opportunities nearby.
+
+The \textbf{Storage Module} handles file uploads for avatars and portfolio images. It integrates with Supabase Storage and ensures proper validation and security.
+
+Overall, the modular design of the Artify system ensures that each component performs a specific function while contributing to the overall workflow. This design allows for future scalability and integration of additional features.
+
+\section{Data / Schema Design}
+
+The data design of the Artify system is based on a structured relational database model that ensures efficient storage, retrieval, and management of data. The schema is designed according to the Entity Relationship (ER) diagram.
+
+The primary entity in the system is the \textbf{User}, managed by Supabase Auth. Each user has a unique ID and email address.
+
+The \textbf{Profiles} table stores core user information including id, email, full\_name, username, avatar\_url, role, bio, location, website, social\_links, and verification status. Each profile is linked to a user via the id field.
+
+The \textbf{Artists} table stores artist-specific information including id (foreign key to profiles), stage\_name, genres (array), price\_range, base\_price, rating, total\_gigs, tags, portfolio\_images, videos, and availability status.
+
+The \textbf{Managers} table stores manager-specific information including id (foreign key to profiles), company\_name, company\_type, total\_events, and upcoming\_events.
+
+The \textbf{Events} table stores event information including id, organizer\_id (foreign key to profiles), title, description, event\_date, end\_date, location, venue\_name, city, country, budget\_min, budget\_max, status, and visibility.
+
+The \textbf{Bookings} table stores booking requests including id, event\_id, artist\_id, organizer\_id, status, payment\_status, offer\_amount, message, and event\_date.
+
+The \textbf{Messages} table stores encrypted communications including id, sender\_id, receiver\_id, content (encrypted), is\_read, and created\_at.
+
+The relationships in the database can be summarized as follows:
+
+\begin{itemize}
+    \item One User has one Profile
+    \item One Profile can have one Artist or one Manager record
+    \item One Manager can publish multiple Events
+    \item One Event can have multiple Bookings
+    \item One Artist can have multiple Bookings
+    \item Two Users can exchange multiple Messages
+\end{itemize}
+
+The schema is normalized to reduce redundancy and ensure data integrity. Foreign key constraints maintain relationships between entities, ensuring consistency across the database.
+
+% TODO: Add erd_diagram.png to project folder (Entity Relationship Diagram)
+\begin{figure}[H]
+    \centering
+    % Uncomment below when image is available
+    % \includegraphics[width=0.85\textwidth]{erd_diagram.png}
+    \fbox{\begin{minipage}[c][5cm]{0.85\textwidth}
+        \centering
+        \vspace{2cm}
+        \textit{Place ER Diagram Here (erd\_diagram.png)}\\
+        \vspace{0.5cm}
+        Show relationships between: Users, Profiles, Artists, Managers, Events, Bookings, Messages
+        \vspace{2cm}
+    \end{minipage}}
+    \caption{Entity Relationship Diagram of Artify System}
+    \label{fig:er_diagram}
+\end{figure}
+
+\subsection*{Profiles Table}
+
+\begin{table}[H]
+\centering
+\caption{Profiles Table Structure}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} \\
+\hline
+id & UUID (PK) & Unique user identifier (from auth) \\
+email & TEXT (Unique) & Email address \\
+full\_name & TEXT & User's full name \\
+username & TEXT (Unique) & Unique username \\
+avatar\_url & TEXT & URL to profile picture \\
+role & TEXT & 'artist' or 'manager' \\
+bio & TEXT & About section \\
+location & TEXT & City, Country \\
+website & TEXT & Personal website \\
+social\_links & JSONB & Social media links \\
+is\_verified & BOOLEAN & Verification badge \\
+created\_at & TIMESTAMP & Account creation date \\
+updated\_at & TIMESTAMP & Last update date \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Artists Table}
+
+\begin{table}[H]
+\centering
+\caption{Artists Table Structure}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} \\
+\hline
+id & UUID (PK, FK) & References profiles(id) \\
+stage\_name & TEXT & Performance name \\
+genres & TEXT[] & Array of genres \\
+price\_range & TEXT & e.g., "\$500-\$1000" \\
+base\_price & NUMERIC & Starting price \\
+rating & DECIMAL & Average rating (0-5) \\
+total\_gigs & INTEGER & Completed gigs \\
+tags & TEXT[] & Skills/tags \\
+portfolio\_images & TEXT[] & Image URLs \\
+videos & TEXT[] & Video URLs \\
+is\_available & BOOLEAN & Available for booking \\
+created\_at & TIMESTAMP & Record creation date \\
+updated\_at & TIMESTAMP & Last update date \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Managers Table}
+
+\begin{table}[H]
+\centering
+\caption{Managers Table Structure}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} \\
+\hline
+id & UUID (PK, FK) & References profiles(id) \\
+company\_name & TEXT & Company/organization name \\
+company\_type & TEXT & e.g., "Event Planning" \\
+total\_events & INTEGER & Total events organized \\
+upcoming\_events & INTEGER & Scheduled events \\
+created\_at & TIMESTAMP & Record creation date \\
+updated\_at & TIMESTAMP & Last update date \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Events Table}
+
+\begin{table}[H]
+\centering
+\caption{Events Table Structure}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} \\
+\hline
+id & UUID (PK) & Unique event identifier \\
+organizer\_id & UUID (FK) & References profiles(id) \\
+title & TEXT & Event title \\
+description & TEXT & Event description \\
+event\_date & TIMESTAMP & Event start date/time \\
+end\_date & TIMESTAMP & Event end date/time \\
+location & TEXT & Event location \\
+venue\_name & TEXT & Venue name \\
+city & TEXT & City \\
+country & TEXT & Country \\
+budget\_min & NUMERIC & Minimum budget \\
+budget\_max & NUMERIC & Maximum budget \\
+status & TEXT & 'draft', 'published', 'completed' \\
+visibility & TEXT & 'public' or 'private' \\
+created\_at & TIMESTAMP & Record creation date \\
+updated\_at & TIMESTAMP & Last update date \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Bookings Table}
+
+\begin{table}[H]
+\centering
+\caption{Bookings Table Structure}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} \\
+\hline
+id & UUID (PK) & Unique booking identifier \\
+event\_id & UUID (FK) & References events(id) \\
+artist\_id & UUID (FK) & References profiles(id) \\
+organizer\_id & UUID (FK) & References profiles(id) \\
+status & TEXT & 'pending', 'accepted', 'declined' \\
+payment\_status & TEXT & 'pending', 'paid' \\
+offer\_amount & NUMERIC & Agreed amount \\
+message & TEXT & Booking message \\
+event\_date & TIMESTAMP & Event date \\
+created\_at & TIMESTAMP & Request creation date \\
+updated\_at & TIMESTAMP & Last update date \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection*{Messages Table}
+
+\begin{table}[H]
+\centering
+\caption{Messages Table Structure}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Field Name} & \textbf{Data Type} & \textbf{Description} \\
+\hline
+id & UUID (PK) & Unique message identifier \\
+sender\_id & UUID (FK) & References profiles(id) \\
+receiver\_id & UUID (FK) & References profiles(id) \\
+content & TEXT & Encrypted message content \\
+is\_read & BOOLEAN & Read status \\
+created\_at & TIMESTAMP & Message timestamp \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Procedural / Flow Design}
+
+The procedural design of the Artify system describes the sequence of operations and workflows that occur during system execution. It focuses on how data flows through different modules and how various processes are carried out.
+
+The system workflow begins with user registration. The user provides email, password, full name, and selects a role (artist or manager). An email verification is sent, and upon confirmation, the user account is activated.
+
+After login, the user is directed to complete their profile. Artists add stage names, genres, pricing, and portfolio images. Managers add company details and event information.
+
+For managers, the workflow includes creating events with detailed information. Events can be saved as drafts or published publicly. Published events appear in the gig listings for artists to browse.
+
+Artists can browse open gigs, filter by location or genre, and submit booking requests. Managers receive notifications and can review requests. They can accept, decline, or request more information.
+
+Once a booking is accepted, both parties can communicate through the encrypted messaging system. The booking status is tracked, and the event is added to the artist's calendar.
+
+After the event, managers can mark the booking as completed and process payment. Artists can provide feedback, and the system updates ratings accordingly.
+
+The overall process can be summarized as follows:
+
+\begin{enumerate}
+    \item User registers and verifies email
+    \item Profile is created based on role
+    \item Managers publish events
+    \item Artists browse and submit booking requests
+    \item Managers review and update booking status
+    \item Encrypted messaging for communication
+    \item Event is completed and payment is processed
+    \item Feedback and ratings are updated
+\end{enumerate}
+
+This procedural flow ensures a smooth transition between different stages of the booking process. It also ensures that each module receives the necessary input and produces the expected output.
+
+Error handling mechanisms are incorporated at various stages to ensure system reliability. For example, invalid file formats are detected during upload, and duplicate booking attempts are prevented.
+
+\subsection*{Data Flow Diagram}
+
+The Data Flow Diagram (DFD) represents how data moves within the system, starting from user registration to event completion.
+
+% TODO: Add dfd_artify.png to project folder (Data Flow Diagram)
+\begin{figure}[H]
+\centering
+% Uncomment below when image is available
+% \includegraphics[width=0.9\textwidth]{dfd_artify.png}
+\fbox{\begin{minipage}[c][5cm]{0.9\textwidth}
+    \centering
+    \vspace{2cm}
+    \textit{Place Data Flow Diagram Here (dfd\_artify.png)}\\
+    \vspace{0.5cm}
+    Show data flow: User Registration → Profile Creation → Event Publishing → Booking → Messaging
+    \vspace{2cm}
+\end{minipage}}
+\caption{Data Flow Diagram of Artify System}
+\label{fig:dfd}
+\end{figure}
+
+The diagram shows how user data flows through authentication, profile creation, event management, booking, and messaging modules. It also highlights interactions with the database and external services.
+
+\subsection*{System Architecture}
+
+The system architecture diagram provides a high-level overview of the structural design of the Artify system.
+
+% TODO: Add architecture_artify.png to project folder (System Architecture Diagram)
+\begin{figure}[H]
+\centering
+% Uncomment below when image is available
+% \includegraphics[width=0.85\textwidth]{architecture_artify.png}
+\fbox{\begin{minipage}[c][5cm]{0.85\textwidth}
+    \centering
+    \vspace{2cm}
+    \textit{Place System Architecture Diagram Here (architecture\_artify.png)}\\
+    \vspace{0.5cm}
+    Show: React Frontend → Supabase Backend (Auth, Database, Storage)
+    \vspace{2cm}
+\end{minipage}}
+\caption{System Architecture of Artify System}
+\label{fig:architecture}
+\end{figure}
+
+The architecture illustrates how user requests flow from the React frontend to Supabase backend services. The system interacts with the PostgreSQL database for storage, and external APIs are used for geolocation and encryption.
+
+\section{User Interface Design}
+
+The user interface (UI) design of the Artify system plays a critical role in ensuring usability, accessibility, and user satisfaction. The system is designed with a focus on modern aesthetics, simplicity, and intuitive navigation.
+
+The interface uses a dark theme with vibrant accent colors (fuchsia, cyan, purple) to create a visually appealing experience. The design emphasizes clarity and ease of use, enabling users to interact with complex features effortlessly.
+
+The landing page provides a clean, modern introduction to the platform with clear calls-to-action for login and registration. The design uses gradient effects and animations to create visual interest.
+
+The authentication pages (login and register) are designed to be straightforward, with clear form fields and validation feedback. The registration process includes role selection, ensuring users are directed to the appropriate experience.
+
+The dashboard interface is the central hub of the application. For artists, it provides an overview of bookings, upcoming gigs, and revenue metrics. For managers, it shows event statistics, booking requests, and performance indicators.
+
+The event listing pages use card-based layouts with clear information hierarchy. Filters and search functionality enable users to find relevant content quickly.
+
+The booking management interface provides clear status indicators and action buttons. Artists can easily accept or decline offers, while managers can track all requests.
+
+The messaging interface uses a conversation-based layout with clear message bubbles. Encryption is transparent to users, ensuring security without compromising usability.
+
+Responsive design techniques ensure that the application works well on different devices and screen sizes. The UI adapts seamlessly from desktop to mobile, providing an optimal experience.
+
+Consistency is maintained across all pages in terms of layout, color scheme, and typography. This ensures a cohesive user experience and reinforces brand identity.
+
+In conclusion, the user interface design of the Artify system ensures that users can interact with the platform effectively, regardless of their technical background. It enhances the overall functionality by making artist management accessible and intuitive.
+
+\setcounter{chapter}{5}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 5}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{DEVELOPMENT METHODOLOGY}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 5 \quad DEVELOPMENT METHODOLOGY}
+\setcounter{section}{0}
+\section{Project Roadmap}
+
+A project roadmap is a high-level strategic plan that outlines the timeline, phases, milestones, and deliverables of a project. For the Artify platform, the roadmap was designed to ensure systematic development of features such as authentication, profile management, event publishing, booking system, and messaging.
+
+The first phase is \textbf{Project Initiation and Requirement Analysis}. During this phase, the problem statement was defined, and objectives were identified. User requirements were gathered through research on existing platforms and pain points faced by artists and managers.
+
+The second phase is \textbf{System Design and Architecture Planning}. In this phase, database schema, system architecture, and UI/UX designs were created. The architecture defines how components such as the React frontend, Supabase backend, and external APIs interact.
+
+The third phase is \textbf{Development and Implementation}, executed in iterative cycles (sprints). Each sprint focuses on specific features:
+
+\begin{itemize}
+\item Sprint 1: Project setup, authentication, and basic routing
+
+\item Sprint 2: Profile management and avatar uploads
+
+\item Sprint 3: Artist and manager dashboard development
+
+\item Sprint 4: Event management and publishing
+
+\item Sprint 5: Booking system and status tracking
+
+\item Sprint 6: Encrypted messaging implementation
+
+\item Sprint 7: Location-based features and polish
+
+\item Sprint 8: Testing, bug fixes, and documentation
+\end{itemize}
+
+The fourth phase is \textbf{Testing and Quality Assurance}. Testing is integrated into every sprint. Unit testing, integration testing, and user acceptance testing are conducted to ensure functionality.
+
+The fifth phase is \textbf{Deployment and User Feedback}. The platform is deployed using Vercel or Netlify for frontend and Supabase for backend. Feedback is collected and used for improvements.
+
+The final phase is \textbf{Maintenance and Enhancement}. After deployment, the system is monitored and updated. New features and optimizations are added based on user requirements.
+
+\section{User Stories}
+
+User stories describe system functionality from the perspective of the end user. Each user story follows the format: As a [user], I want [functionality], so that [benefit].
+
+Examples of user stories for Artify include:
+
+\begin{itemize}
+\item As an artist, I want to create a professional profile so that I can showcase my portfolio to managers.
+
+\item As a manager, I want to publish events so that I can attract suitable artists.
+
+\item As an artist, I want to browse open gigs so that I can find performance opportunities.
+
+\item As a manager, I want to review booking requests so that I can select the right talent.
+
+\item As a user, I want to send encrypted messages so that my communications remain private.
+
+\item As an artist, I want to view my upcoming gigs on a calendar so that I can manage my schedule.
+
+\item As a manager, I want to track booking status so that I know which artists are confirmed.
+\end{itemize}
+
+Each user story is broken down into smaller tasks, which are assigned during sprint planning.
+
+Sprint planning is a key Agile activity where the team decides what work will be completed in the upcoming sprint. The process begins with selecting user stories from the product backlog.
+
+During sprint planning, the team:
+\begin{itemize}
+\item Reviews the backlog
+
+\item Selects user stories based on priority
+
+\item Estimates effort using story points
+
+\item Breaks stories into tasks
+
+\item Assigns tasks to team members
+\end{itemize}
+
+Each sprint has a clear goal, such as "Implement booking management module." At the end of the sprint, a sprint review demonstrates completed features and gathers feedback.
+
+\section{Test Plan}
+
+Testing is a critical phase that ensures the system functions correctly, meets user requirements, and is free from defects. For Artify, the test plan validates all modules including authentication, profile management, event publishing, booking, and messaging.
+
+The main objectives of testing are:
+\begin{itemize}
+    \item To verify that all functionalities work as expected
+    \item To ensure data accuracy and integrity
+    \item To validate system performance under different loads
+    \item To ensure secure authentication and encrypted messaging
+    \item To detect and fix bugs early in development
+\end{itemize}
+
+The scope of testing includes:
+\begin{itemize}
+    \item User Authentication (Registration, Login, Email Verification)
+    \item Profile Management (Create, Update, Avatar Upload)
+    \item Event Management (Create, Update, Publish)
+    \item Booking System (Request, Accept, Decline)
+    \item Messaging (Send, Receive, Encryption)
+    \item Location Services (Geolocation, Distance Calculation)
+\end{itemize}
+
+\textbf{Types of Testing}
+
+\textbf{Unit Testing:}  
+Individual components are tested independently. For example, the encryption function is tested to ensure messages are properly encrypted and decrypted.
+
+\textbf{Integration Testing:}  
+Different modules are tested together to verify proper data flow. For example, testing that booking requests are properly linked to events and users.
+
+\textbf{System Testing:}  
+The complete system is tested as a whole. The entire workflow from registration to event completion is validated.
+
+\textbf{User Acceptance Testing (UAT):}  
+End users test the system to ensure it meets their requirements. Feedback is collected and used for improvements.
+
+\textbf{Security Testing:}  
+Authentication mechanisms, encryption, and Row Level Security policies are tested to ensure data protection.
+
+\textbf{Test Cases}
+
+\begin{table}[h]
+\centering
+\caption{Sample Test Cases}
+\begin{tabular}{|c|p{3cm}|p{3cm}|p{3cm}|c|}
+\hline
+\textbf{Test ID} & \textbf{Description} & \textbf{Input} & \textbf{Expected Output} & \textbf{Status} \\
+\hline
+TC01 & User Registration & Valid email, password & Registration successful & Pass \\
+\hline
+TC02 & Email Verification & Click verification link & Email confirmed & Pass \\
+\hline
+TC03 & Profile Creation & Fill profile form & Profile saved & Pass \\
+\hline
+TC04 & Avatar Upload & Upload image file & Avatar updated & Pass \\
+\hline
+TC05 & Event Creation & Fill event form & Event created & Pass \\
+\hline
+TC06 & Booking Request & Submit booking & Request sent & Pass \\
+\hline
+TC07 & Message Encryption & Send message & Message encrypted & Pass \\
+\hline
+TC08 & Location Discovery & Enable geolocation & Nearby gigs shown & Pass \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Defect Tracking}
+All defects identified during testing are recorded and tracked. Each defect includes:
+\begin{itemize}
+    \item Defect ID
+    \item Description
+    \item Severity (Low, Medium, High)
+    \item Status (Open, In Progress, Closed)
+\end{itemize}
+
+Defects are prioritized based on their impact and resolved in subsequent sprints.
+
+The test plan ensures that the Artify platform is reliable, efficient, and secure. By integrating testing into every stage of development, the system achieves high quality and meets user expectations.
+
+\setcounter{chapter}{6}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 6}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{IMPLEMENTATION AND TESTING}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 6 \quad IMPLEMENTATION AND TESTING}
+\setcounter{section}{0}
+
+\section{Implementation Procedures}
+
+The implementation phase of the Artify platform involves the transformation of the system design into a fully functional application. This phase is carried out using an iterative approach aligned with Agile methodology.
+
+The process begins with the setup of the development environment. Visual Studio Code is used as the primary development tool. Node.js and npm are installed for package management.
+
+The frontend is implemented using React with Vite as the build tool. The project structure follows a component-based architecture with separate directories for components, views, hooks, context, and utilities.
+
+TailwindCSS is configured for styling, providing a utility-first approach. Custom configurations are added for colors, fonts, and animations to match the platform's design system.
+
+Supabase client is initialized and configured with project credentials. Authentication hooks are implemented to manage user sessions and provide context throughout the application.
+
+The authentication module is implemented first. User registration includes email, password, full name, and role selection. Supabase Auth handles email verification and session management.
+
+Profile management is implemented next. Users can update their information, upload avatars, and manage social links. Supabase Storage handles file uploads with proper validation.
+
+The event management module enables managers to create and publish events. Form validation ensures data integrity, and visibility controls determine which events are publicly visible.
+
+The booking system is implemented with status tracking. Artists can submit requests, and managers can update status. The system maintains booking history and provides notifications.
+
+The messaging module implements AES-GCM encryption for secure communications. Messages are encrypted before storage and decrypted upon retrieval, ensuring privacy.
+
+Location services use the browser's Geolocation API to determine user coordinates. Distance calculations use the Haversine formula to compute distances between users.
+
+The database schema is implemented in Supabase with proper indexes and Row Level Security policies. Triggers automatically create profile records when users register.
+
+Version control is maintained using Git. The project is hosted on GitHub, enabling collaboration and code reviews. Regular commits document progress.
+
+The implementation follows an iterative process, where each module is developed and tested incrementally. Feedback from testing is incorporated into subsequent iterations.
+
+Error handling is integrated throughout the system. The application handles network errors, validation errors, and authentication errors gracefully, providing appropriate feedback to users.
+
+In conclusion, the implementation of Artify involves the systematic integration of multiple components. The use of modern technologies and frameworks ensures that the system is efficient, secure, and scalable.
+
+\section{Testing Methods and Results}
+
+Testing ensures that the Artify platform performs correctly, efficiently, and securely. Testing is integrated throughout the development process in accordance with Agile methodology.
+
+\textbf{Unit Testing} verifies individual components. The encryption module is tested to ensure messages are properly encrypted and decrypted. Profile update functions are tested to validate data integrity.
+
+\textbf{Integration Testing} ensures modules interact correctly. Booking requests are tested to verify they are properly linked to events and users. Messaging is tested to ensure conversations are maintained between sender and receiver.
+
+\textbf{System Testing} evaluates the complete system. The entire workflow from registration to event completion is tested to ensure seamless operation.
+
+\textbf{User Acceptance Testing} involves end users testing the platform. Feedback is collected on usability, functionality, and overall experience. Suggestions are incorporated into improvements.
+
+\textbf{Security Testing} validates authentication, encryption, and Row Level Security policies. Penetration testing ensures the system is protected against common vulnerabilities.
+
+\textbf{Performance Testing} evaluates system performance under different conditions. Load testing ensures the platform can handle multiple concurrent users without degradation.
+
+\textbf{Test Results}
+
+Testing results indicate that the Artify platform performs reliably across all modules:
+
+\begin{itemize}
+    \item Authentication: 100\% success rate for registration and login
+    \item Profile Management: All CRUD operations function correctly
+    \item Event Publishing: Events are created and displayed accurately
+    \item Booking System: Status tracking works as expected
+    \item Messaging: Encryption and decryption function properly
+    \item Location Services: Geolocation and distance calculations are accurate
+\end{itemize}
+
+Minor issues such as edge cases in form validation and performance optimizations were identified and resolved during testing.
+
+The overall testing process highlights the importance of continuous evaluation and improvement. By integrating testing into every stage of development, the system achieves higher reliability and better user satisfaction.
+
+\setcounter{chapter}{7}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 7}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{CONCLUSION}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 7 \quad CONCLUSION}
+\setcounter{section}{0}
+
+\section{Summary}
+
+The Artify platform was developed as a comprehensive solution for artist management and collaboration. The system integrates various components including authentication, profile management, event publishing, booking system, and encrypted messaging into a unified application.
+
+The development followed an Agile methodology, enabling iterative progress and continuous improvement. Each module was implemented and tested incrementally, ensuring alignment with user requirements.
+
+Key strengths of the system include secure authentication with email verification, role-based access control, professional profile management, encrypted messaging for privacy, location-based discovery, and a responsive design that works across devices.
+
+Testing played a crucial role in ensuring reliability and performance. Various testing methods were employed to validate functionality, security, and usability. Results indicated that the system performs efficiently and meets user expectations.
+
+Overall, Artify successfully achieves its objective of providing a robust platform for artist management. The combination of modern technologies, modular architecture, and user-centric design ensures that the system delivers value to both artists and managers.
+
+\section{Limitations}
+
+Despite successful implementation, certain limitations exist:
+
+\textbf{Limited Scalability:}  
+The current implementation uses Supabase's free tier, which has usage limits. Scaling to large user bases may require paid plans or infrastructure changes.
+
+\textbf{Geographic Limitations:}  
+The platform currently focuses on the Indian market. Expansion to other regions would require localization and currency support.
+
+\textbf{Limited Payment Integration:}  
+The system tracks payment status but does not process payments directly. Integration with payment gateways would enhance functionality.
+
+\textbf{Basic Analytics:}  
+The platform provides basic metrics but lacks advanced analytics such as engagement tracking and performance insights.
+
+\textbf{Mobile Application:}  
+The platform is web-based only. A native mobile application would improve accessibility and user engagement.
+
+\textbf{Review System:}  
+The current implementation lacks a comprehensive review and rating system for artists and managers.
+
+\section{Future Scope}
+
+The Artify platform has significant potential for further development:
+
+\textbf{Payment Gateway Integration:}  
+Future enhancements can include integration with payment gateways such as Razorpay or Stripe for secure online transactions.
+
+\textbf{Mobile Application:}  
+Developing native mobile applications for iOS and Android would increase accessibility and enable push notifications.
+
+\textbf{Advanced Analytics:}  
+Implementing analytics dashboards would provide insights into booking trends, revenue patterns, and user engagement.
+
+\textbf{Review and Rating System:}  
+A comprehensive review system would help build trust and enable better decision-making.
+
+\textbf{Contract Management:}  
+Digital contract generation and signing would streamline the booking process and provide legal protection.
+
+\textbf{AI-Powered Recommendations:}  
+Machine learning algorithms could provide personalized recommendations for artists and events based on user behavior.
+
+\textbf{Social Features:}  
+Adding social features such as following, feeds, and collaborations would enhance community engagement.
+
+\textbf{Multi-Language Support:}  
+Localization for multiple languages would expand the platform's reach to diverse regions.
+
+In conclusion, the future scope of Artify is extensive. By incorporating advanced technologies and addressing current limitations, the platform can evolve into a comprehensive ecosystem for the entertainment industry.
+
+%============================================================
+
+% ===================== APPENDIX =====================
+\clearpage
+
+% ---- Chapter as Appendix ----
+\setcounter{chapter}{8}
+\setcounter{section}{0}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 8}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{APPENDIX}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 8 \quad APPENDIX}
+
+% Apply header & footer style
+\pagestyle{maincontent}
+
+\section{Sample Code / Queries}
+
+Github URL : https://github.com/YOUR_USERNAME/Artify
+
+\textbf{Authentication Context (SupabaseContext.jsx):}
+\lstinputlisting[language=JavaScript, caption=Authentication Context Logic]{src/context/SupabaseContext.jsx}
+
+\vspace{0.5cm}
+
+\textbf{Artist Dashboard (ArtistDashboard.jsx):}
+\lstinputlisting[language=JavaScript, caption=Artist Dashboard Component]{src/views/ArtistDashboard.jsx}
+
+\vspace{0.5cm}
+
+\textbf{Database Schema (supabase-schema.sql):}
+\lstinputlisting[language=SQL, caption=Database Schema]{database/supabase-schema.sql}
+
+\vspace{0.5cm}
+
+\newpage
+\section{User Interface Screenshots - Artify Platform}
+
+The user interface of the Artify system is designed to provide a seamless and intuitive experience. 
+The following screenshots illustrate the different components of the system.\\
+
+% TODO: Create 'screenshots' folder and add all UI screenshots as PNG files
+% You can capture these from your running application
+
+\setlength{\floatsep}{10pt}
+\setlength{\textfloatsep}{10pt}
+\setlength{\intextsep}{10pt}
+
+% Uncomment the \includegraphics lines and add actual screenshots when ready
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/landing_page.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Landing Page}\\
+    \vspace{0.5cm}
+    Capture your app's home/landing page
+    \vspace{1cm}
+\end{minipage}}
+\caption{Landing Page}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/login_page.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Login Page}\\
+    \vspace{0.5cm}
+    Capture the login form
+    \vspace{1cm}
+\end{minipage}}
+\caption{Login Page}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/register_page.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Registration Page}\\
+    \vspace{0.5cm}
+    Capture the registration form with role selection
+    \vspace{1cm}
+\end{minipage}}
+\caption{Registration Page}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/artist_dashboard.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Artist Dashboard}\\
+    \vspace{0.5cm}
+    Capture artist command center with bookings overview
+    \vspace{1cm}
+\end{minipage}}
+\caption{Artist Dashboard}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/manager_dashboard.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Manager Dashboard}\\
+    \vspace{0.5cm}
+    Capture manager dashboard with events overview
+    \vspace{1cm}
+\end{minipage}}
+\caption{Manager Dashboard}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/event_listing.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Event Listing Page}\\
+    \vspace{0.5cm}
+    Capture open gigs/events listing
+    \vspace{1cm}
+\end{minipage}}
+\caption{Event Listing Page}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/booking_calendar.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Booking Calendar View}\\
+    \vspace{0.5cm}
+    Capture calendar view of upcoming gigs
+    \vspace{1cm}
+\end{minipage}}
+\caption{Booking Calendar View}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/messaging_interface.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Encrypted Messaging Interface}\\
+    \vspace{0.5cm}
+    Capture messages/conversation view
+    \vspace{1cm}
+\end{minipage}}
+\caption{Encrypted Messaging Interface}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/profile_page.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: User Profile Page}\\
+    \vspace{0.5cm}
+    Capture user profile with avatar and details
+    \vspace{1cm}
+\end{minipage}}
+\caption{User Profile Page}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+% \includegraphics[width=0.95\textwidth]{screenshots/mobile_responsive.png}
+\fbox{\begin{minipage}[c][4cm]{0.95\textwidth}
+    \centering
+    \vspace{1cm}
+    \textit{Screenshot: Mobile Responsive View}\\
+    \vspace{0.5cm}
+    Capture app on mobile/tablet view
+    \vspace{1cm}
+\end{minipage}}
+\caption{Mobile Responsive View}
+\end{figure}
+
+%================== CHAPTER 9 : REFERENCES ==================
+
+\setcounter{chapter}{9}
+\clearpage
+\thispagestyle{empty}
+
+\noindent
+\makebox[\textwidth]{%
+\begin{minipage}[c][\textheight][c]{\textwidth}
+\centering
+{\fontsize{16pt}{18pt}\selectfont\textbf{CHAPTER 9}}\\[0.4cm]
+{\fontsize{16pt}{18pt}\selectfont\textbf{REFERENCES}}
+\end{minipage}}
+
+\clearpage
+\addcontentsline{toc}{chapter}{CHAPTER 9 \quad REFERENCES}
+
+\setcounter{section}{0}
+
+\begin{thebibliography}{10}
+
+\bibitem{ref1}
+React Team, "React Documentation," \textit{React.dev}, 2024. [Online]. Available: https://react.dev/
+
+\bibitem{ref2}
+Vite Team, "Vite Documentation," \textit{Vitejs.dev}, 2024. [Online]. Available: https://vitejs.dev/
+
+\bibitem{ref3}
+Tailwind Labs, "Tailwind CSS Documentation," \textit{Tailwindcss.com}, 2024. [Online]. Available: https://tailwindcss.com/
+
+\bibitem{ref4}
+Supabase, "Supabase Documentation," \textit{Supabase.com}, 2024. [Online]. Available: https://supabase.com/docs
+
+\bibitem{ref5}
+MDN Web Docs, "Web Crypto API," \textit{Developer.mozilla.org}, 2024. [Online]. Available: https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API
+
+\bibitem{ref6}
+MDN Web Docs, "Geolocation API," \textit{Developer.mozilla.org}, 2024. [Online]. Available: https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API
+
+\bibitem{ref7}
+Lucide Team, "Lucide Icons Documentation," \textit{Lucide.dev}, 2024. [Online]. Available: https://lucide.dev/
+
+\bibitem{ref8}
+React Router Team, "React Router Documentation," \textit{Reactrouter.com}, 2024. [Online]. Available: https://reactrouter.com/
+
+\bibitem{ref9}
+I. Sommerville, \textit{Software Engineering}, 10th ed. 
+Boston, MA, USA: Pearson, 2016.
+
+\bibitem{ref10}
+R. S. Pressman and B. R. Maxim, \textit{Software Engineering: A Practitioner's Approach}, 8th ed. 
+New York, NY, USA: McGraw-Hill, 2015.
+
+\bibitem{ref11}
+E. Freeman, \textit{Head First Design Patterns}. 
+Sebastopol, CA, USA: O'Reilly Media, 2020.
+
+\bibitem{ref12}
+A. Banks, "Building Modern Web Applications with React," \textit{Packt Publishing}, 2023.
+
+\bibitem{ref13}
+PostgreSQL Global Development Group, "PostgreSQL Documentation," \textit{Postgresql.org}, 2024. [Online]. Available: https://www.postgresql.org/docs/
+
+\bibitem{ref14}
+OWASP Foundation, "OWASP Top Ten," \textit{Owasp.org}, 2024. [Online]. Available: https://owasp.org/www-project-top-ten/
+
+\end{thebibliography}
+
+\end{document}
